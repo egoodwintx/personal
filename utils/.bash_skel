@@ -30,7 +30,7 @@ export PATH="$HOME/bin/:/usr/local/sbin:$PATH:."
 
 # init
 echo ""
-echo "                       --=( $HOSTNAME sys profile )=-- "
+echo "                --=( $HOSTNAME sys profile )=-- "
 uptime
 users
 df -l | grep "/usr/"
