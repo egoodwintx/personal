@@ -1,0 +1,39 @@
+#-----------------------------------------
+# .bash_skel
+# project: personal
+# description: personal bashrc file skeleton
+# init date: 2022.12.14
+# 
+#-----------------------------------------
+
+
+###### BEGIN ALIASES #######
+if [ -e $HOME/.bash_aliases ]; then
+    source $HOME/.bash_aliases # source personal bash alias file
+fi
+###### END ALIASES #######
+
+## define system specific aliases below
+
+###### BEGIN FUNCTIONS ########
+if [ -e $HOME/.bash_functions ]; then
+    source $HOME/.bash_functions # source personal bash functions file
+fi
+## define system specific functions below
+
+###### END FUNCTIONS ########
+
+###### BEGIN PATH ###########
+export PATH="$HOME/bin/:$PATH"
+###### END PATH #############
+
+
+# init
+echo ""
+echo "                       --=( $HOSTNAME sys profile )=-- "
+uptime
+users
+df -l | grep "/usr/"
+echo ""
+echo ""
+
