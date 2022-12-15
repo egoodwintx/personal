@@ -24,7 +24,7 @@ fi
 ###### END FUNCTIONS ########
 
 ###### BEGIN PATH ###########
-export PATH="$HOME/bin/:$PATH"
+export PATH="$HOME/bin/:/usr/local/sbin:$PATH:."
 ###### END PATH #############
 
 
