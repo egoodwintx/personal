@@ -27,6 +27,7 @@ fi
 export PATH="$HOME/bin/:/usr/local/sbin:/usr/sbin:$PATH:."
 ###### END PATH #############
 
+export PS1="[\u@\h::\W]"
 
 # init
 echo ""
