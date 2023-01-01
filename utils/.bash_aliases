@@ -17,3 +17,6 @@ alias myip="curl http://ipecho.net/plain; echo"
 alias chmod='sudo chmod'
 alias chown='sudo chown'
 alias chgrp='sudo chgrp'
+# figure out last time FreeBSD updated
+alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'
+
