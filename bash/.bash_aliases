@@ -7,7 +7,7 @@
 #-----------------------------------------
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-alias la='ls -al --color=auto'
+    alias la='ls -al --color=auto'
     alias ll='ls -lh --color=auto'
     alias lt='du -sh * | sort -h'
     alias pkg='sudo apt-get'
@@ -21,14 +21,17 @@ alias la='ls -al --color=auto'
     # figure out last time FreeBSD updated
     #alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'        # ...
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-        # Mac OSX
+    echo "OSX detected."
 elif [[ "$OSTYPE" == "cygwin" ]]; then
-        # POSIX compatibility layer and Linux environment emulation for Windows
+    echo "Windows Cygwin detected."
+    # POSIX compatibility layer and Linux environment emulation for Windows
 elif [[ "$OSTYPE" == "msys" ]]; then
-        # Lightweight shell and GNU utilities compiled for Windows (part of MinGW)
+    echo "Windows detected."
+    # Lightweight shell and GNU utilities compiled for Windows (part of MinGW)
 elif [[ "$OSTYPE" == "win32" ]]; then
-        # I'm not sure this can happen.
+    echo "Windows detected."        # I'm not sure this can happen.
 elif [[ "$OSTYPE" == "openbsd"* ]]; then
+    echo "OpenBSD detected."
     alias la='ls -al'
     alias ll='ls -lh'
     alias lt='du -sh * | sort -h'
@@ -40,6 +43,7 @@ elif [[ "$OSTYPE" == "openbsd"* ]]; then
     # figure out last time OpenBSD updated
     alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'    # ...
 elif [[ "$OSTYPE" == "freebsd"* ]]; then
+    echo "FreeBSD detected."
     alias la='ls -al --color=auto'
     alias ll='ls -lh --color=auto'
     alias lt='du -sh * | sort -h'
@@ -54,7 +58,7 @@ elif [[ "$OSTYPE" == "freebsd"* ]]; then
     # figure out last time FreeBSD updated
     alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'
 else
-        # Unknown.
+    echo "Unknown OS detected."    # Unknown.
 fi
 
 
