@@ -15,7 +15,7 @@
 (add-to-list 'custom-theme-load-path (format "%s/%s" emacsrootdir "themes/catppuccin"))
 
 (require 'package) ;; package manager
-
+(require 'egoodwin-packages)
 (require 'egoodwin-universal)
 (require 'personal-info)
 
@@ -35,3 +35,6 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+
+
+;; (when (not (package-installed-p 'geiser))
