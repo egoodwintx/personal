@@ -18,6 +18,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     alias chmod='sudo chmod'
     alias chown='sudo chown'
     alias chgrp='sudo chgrp'
+    alias python='python3'
     # figure out last time FreeBSD updated
     #alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'        # ...
 elif [[ "$OSTYPE" == "darwin"* ]]; then
