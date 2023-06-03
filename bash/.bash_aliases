@@ -7,7 +7,8 @@
 #-----------------------------------------
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    alias ls='ls -al --color=auto'
+    alias ls='ls --color=auto'
+    alias la='ls --color=auto -al'
     alias ll='ls -lh --color=auto'
     alias lt='du -sh * | sort -h'
     alias pkg='sudo apt-get'
