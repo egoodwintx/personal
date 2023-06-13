@@ -1,7 +1,7 @@
-trigger: pyhead
-form: 
+trigger: "bashhead"
+form:
    #---------------------------------------------------
-   # [[filename]].py
+   # [[filename]].sh
    # project: [[projectname]]
    # description: [[description]]
    # init date: [[ddate]]
