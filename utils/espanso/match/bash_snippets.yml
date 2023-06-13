@@ -1,0 +1,13 @@
+trigger: bashhead
+form:
+   #---------------------------------------------------
+   # [[filename]].sh
+   # project: [[projectname]]
+   # description: [[description]]
+   # init date: [[ddate]]
+   #
+   #---------------------------------------------------
+
+form_fields:
+      text:
+        multiline: true

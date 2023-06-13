@@ -1,0 +1,13 @@
+trigger: pyhead
+form: 
+   #---------------------------------------------------
+   # [[filename]].py
+   # project: [[projectname]]
+   # description: [[description]]
+   # init date: [[ddate]]
+   #
+   #---------------------------------------------------
+
+form_fields:
+      text:
+        multiline: true

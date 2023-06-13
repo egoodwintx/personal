@@ -34,20 +34,13 @@ matches:
         params:
           format: "%m/%d/%Y"
 
-  # Print the output of a shell command
+  # Print our shell to terminal
   - trigger: ":shell"
     replace: "{{output}}"
     vars:
       - name: output
         type: shell
         params:
-          cmd: "echo 'Hello from your shell'"
+          cmd: "echo 'echo $SHELL'"
 
-  - trigger: "oshead"
-    replace: |
-    #------------------------------------
-    # author: Ed Goodwin
-    # date:
-    # description: 
-    #------------------------------------
   # And much more! For more information, visit the docs: https://espanso.org/docs/

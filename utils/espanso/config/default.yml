@@ -1,0 +1,3 @@
+extra_includes:
+  - "../match/correspondence.yml"
+  - "../match/egoodwin_espanso_root.yml"
