@@ -1,6 +1,0 @@
-filter_title: "Visual Studio Code"
-
-extra_includes:
-  - "../match/python_snippets.yml"
-  - "../match/rust_snippets.yml"
-  - "../match/bash_snippets.yml"

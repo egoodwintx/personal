@@ -1,0 +1,6 @@
+filter_exec: code
+
+extra_includes:
+  - "../match/personal/python_snippets.yml"
+  - "../match/personal/rust_snippets.yml"
+  - "../match/personal/bash_snippets.yml"
