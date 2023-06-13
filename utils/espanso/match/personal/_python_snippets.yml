@@ -1,13 +1,14 @@
 trigger: "pyhead"
-form: 
-   #---------------------------------------------------
-   # [[filename]].py
-   # project: [[projectname]]
-   # description: [[description]]
-   # init date: [[ddate]]
-   #
-   #---------------------------------------------------
+replace: "it works!"
+# form: 
+#    '#---------------------------------------------------
+#    # [[filename]].py
+#    # project: [[projectname]]
+#    # description: [[description]]
+#    # init date: [[ddate]]
+#    #
+#    #---------------------------------------------------'
 
-form_fields:
-      text:
-        multiline: true
+# form_fields:
+#       text:
+#         multiline: true

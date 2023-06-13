@@ -1,4 +1,6 @@
+name: vscode
 filter_exec: code
+backend: Clipboard
 
 extra_includes:
   - "../../match/personal/_python_snippets.yml"
