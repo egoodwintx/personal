@@ -19,21 +19,53 @@ matches:
 
   # NOTE: espanso uses YAML to define matches, so pay attention to the indentation!
 
-  # email salutations
-  - trigger: ":cheg"
-    replace: "Cheers,\nEd Goodwin" 
+  # company aliases
+  - trigger: ":raconv"
+    replace: "Rana Analytics"
+
+  - trigger: ":rallc"
+    replace: "Rana Analytics, LLC"
+
+  - trigger: ":raihconv"
+    replace: "Rana International Holdings"
+
+  - trigger: ":raihllc"
+    replace: "Rana International Holdings, LLC" 
+
+  - trigger: ":rasrv"
+    replace: "Rana Servicios"
 
   # But matches can also be dynamic:
 
-  # Print the current date
-  - trigger: ":date"
+  # Print the current date in MM/DD/YYYY format
+  - trigger: "ddate"
     replace: "{{mydate}}"
     vars:
       - name: mydate
         type: date
         params:
-          format: "%m/%d/%Y"
+          format: "%m.%d.%Y"
 
+
+  # Print the current date in MM/DD/YYYY format
+  - trigger: "fdate"
+    replace: "{{mydate}}"
+    vars:
+      - name: mydate
+        type: date
+        params:
+          format: "%Y%m%d"
+
+    
+  # Print the current date in MM/DD/YYYY format
+  - trigger: "xdate"
+    replace: "{{mydate}}"
+    vars:
+      - name: mydate
+        type: date
+        params:
+          format: "%a %b %d, %Y"
+  
   # Print our shell to terminal
   - trigger: ":shell"
     replace: "{{output}}"

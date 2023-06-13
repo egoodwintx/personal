@@ -1,1 +1,5 @@
 # snippets for email, documents, and general office stuff
+matches:
+ # email salutations
+  - trigger: ":cheg"
+    replace: "Cheers,\nEd Goodwin" 
