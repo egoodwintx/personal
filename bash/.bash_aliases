@@ -7,7 +7,8 @@
 #-----------------------------------------
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    alias la='ls -al --color=auto'
+    alias ls='ls --color=auto'
+    alias la='ls --color=auto -al'
     alias ll='ls -lh --color=auto'
     alias lt='du -sh * | sort -h'
     alias pkg='sudo apt-get'
@@ -18,6 +19,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     alias chmod='sudo chmod'
     alias chown='sudo chown'
     alias chgrp='sudo chgrp'
+    alias python='python3'
     # figure out last time FreeBSD updated
     #alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'        # ...
 elif [[ "$OSTYPE" == "darwin"* ]]; then
@@ -40,6 +42,7 @@ elif [[ "$OSTYPE" == "openbsd"* ]]; then
     alias psg="ps aux | grep -v grep | grep -i -e VSZ -e"
     alias mkdir="mkdir -p"
     alias myip="curl http://ipecho.net/plain; echo"
+    alias python='python3'
     # figure out last time OpenBSD updated
     alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'    # ...
 elif [[ "$OSTYPE" == "freebsd"* ]]; then

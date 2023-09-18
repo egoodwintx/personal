@@ -1,0 +1,14 @@
+# snippets for email, documents, and general office stuff
+matches:
+ # email salutations
+  - trigger: ":cheg"
+    replace: "Cheers,\nEd Goodwin" 
+
+  - trigger: ":greg"
+    replace: "ed.registration@gmail.com"
+
+  - trigger: ":gmy"
+    replace: "ed.goodwin@gmail.com"
+  
+  - trigger: ":ranaem"
+    replace: "ed.goodwin@ranaanalytics.com"

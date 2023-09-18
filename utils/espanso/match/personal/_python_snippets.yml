@@ -1,0 +1,21 @@
+matches:
+  - trigger: "pyhead"
+    replace: "{{headform_py.cdate}}"
+    vars:
+      - name: headform_py
+        type: form
+        params: 
+          layout: |
+            #---------------------------------------------------
+            # [[filename]].py
+            # project: [[projectname]]
+            # description: [[description]]
+            # init date: {{cdate}}
+            #
+            #---------------------------------------------------
+          fields:
+            vars:
+              - name: cdate
+                type: date
+                params:
+                  format: "%d.%m.%Y%"  

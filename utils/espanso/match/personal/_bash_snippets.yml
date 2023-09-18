@@ -1,0 +1,24 @@
+matches:
+  - trigger: "bashhead"
+  
+    form: |
+      #----------------------------------------------------
+      # [[filename]].sh
+      # project: [[projectname]]
+      #
+      # description: [[description]]
+      # author: Ed Goodwin
+      # init date: {{cdate}}
+      #
+      #---------------------------------------------------
+
+    form_fields:
+          text:
+            multiline: true
+
+
+    vars:
+      - name: cdate
+        type: date
+        params:
+          format: "%d.%m.%Y%"
