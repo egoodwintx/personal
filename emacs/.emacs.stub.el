@@ -15,9 +15,14 @@
 (add-to-list 'custom-theme-load-path (format "%s/%s" emacsrootdir "themes/catppuccin"))
 
 (require 'package) ;; package manager
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+
+
 (require 'egoodwin-packages)
 (require 'egoodwin-universal)
 (require 'personal-info)
+
+(package-initialize)
 
 
 ;; Python

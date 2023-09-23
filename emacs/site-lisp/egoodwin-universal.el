@@ -21,22 +21,22 @@
 
 ;; (if (fboundp 'normal-top-level-add-subdirs-to-load-path)
 ;;     (normal-top-level-add-subdirs-to-load-path))
-
+(require 'package)
 ;; give vertical frames
 ;;(split-window-horizontally)
 ;; (package-initialize)
-(add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/"))
-(add-to-list 'package-archives '("nongnu" . "https://elpa.nongnu.org/nongnu/autothemer.html"))
-(add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
+;;(add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/"))
+;;(add-to-list 'package-archives '("nongnu" . "https://elpa.nongnu.org/nongnu/autothemer.html"))
+;;(add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
-(add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/"))
+;;(add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/"))
+(package-initialize)
 
 ;; commonly used packages
 (require 'pabbrev)
-(require 'python)
-      (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
+;; (require 'python)
+;;      (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
 ;; (require 'org)
-
 
 ;; Enable Markdown Mode
 (autoload 'markdown-mode "markdown-mode.el"
@@ -49,8 +49,6 @@
       (cons '("\\.mmd" . markdown-mode) auto-mode-alist))
 (setq auto-mode-alist      
       (cons '("\\.mmd.txt" . markdown-mode) auto-mode-alist))
-
-;; load preferred theme
 
 ;; set up org-mode global bindings
 (global-set-key (kbd "C-c l") #'org-store-link)
