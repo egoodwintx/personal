@@ -1,0 +1,19 @@
+matches:
+  - trigger: "mdhead"
+    replace: "{{headform_md.cdate}}"
+    vars:
+      - name: headform_md
+        type: form
+        params: 
+          layout: |
+            ---
+            title: [[projectname]]
+            author:
+            date: {{cdate}}
+            ---
+          fields:
+            vars:
+              - name: cdate
+                type: date
+                params:
+                  format: "%d.%m.%Y%"  
