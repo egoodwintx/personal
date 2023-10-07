@@ -20,6 +20,7 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     alias chown='sudo chown'
     alias chgrp='sudo chgrp'
     alias python='python3'
+    alias sshx='ssh -X'
     # figure out last time FreeBSD updated
     #alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'        # ...
 elif [[ "$OSTYPE" == "darwin"* ]]; then
@@ -43,6 +44,7 @@ elif [[ "$OSTYPE" == "openbsd"* ]]; then
     alias mkdir="mkdir -p"
     alias myip="curl http://ipecho.net/plain; echo"
     alias python='python3'
+    alias sshx='ssh -X'
     # figure out last time OpenBSD updated
     alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'    # ...
 elif [[ "$OSTYPE" == "freebsd"* ]]; then
@@ -58,10 +60,9 @@ elif [[ "$OSTYPE" == "freebsd"* ]]; then
     alias chmod='sudo chmod'
     alias chown='sudo chown'
     alias chgrp='sudo chgrp'
+    alias sshx='ssh -X'
     # figure out last time FreeBSD updated
     alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'
 else
     echo "Unknown OS detected."    # Unknown.
 fi
-
-

@@ -1,8 +1,3 @@
-# base.yml
-# Below are commonly used "universal" snippets for espanso
-# Need to port a chunk of these over from aText and TextExpander
-
-
 # espanso match file
 
 # For a complete introduction, visit the official docs at: https://espanso.org/docs/
@@ -13,13 +8,17 @@
 # Matches are substitution rules: when you type the "trigger" string
 # it gets replaced by the "replace" string.
 matches:
-  # Simple text replacement
-  - trigger: ":espanso"
-    replace: "Hi there!"
-
   # NOTE: espanso uses YAML to define matches, so pay attention to the indentation!
 
-  # company aliases
+  # Print the current date
+  - trigger: ":date"
+    replace: "{{mydate}}"
+    vars:
+      - name: mydate
+        type: date
+        params:
+          format: "%m/%d/%Y"
+
   - trigger: ":raconv"
     replace: "Rana Analytics"
 
@@ -35,44 +34,43 @@ matches:
   - trigger: ":rasrv"
     replace: "Rana Servicios"
 
-  # But matches can also be dynamic:
-
-  # Print the current date in MM/DD/YYYY format
-  - trigger: "ddate"
-    replace: "{{mydate}}"
-    vars:
-      - name: mydate
-        type: date
-        params:
-          format: "%m.%d.%Y"
-
-
-  # Print the current date in MM/DD/YYYY format
   - trigger: "fdate"
-    replace: "{{mydate}}"
+    replace: "{{filedate}}"
     vars:
-      - name: mydate
+      - name: filedate
         type: date
         params:
           format: "%Y%m%d"
 
-    
-  # Print the current date in MM/DD/YYYY format
   - trigger: "xdate"
-    replace: "{{mydate}}"
+    replace: "{{extenddate}}"
     vars:
-      - name: mydate
+      - name: extenddate
         type: date
         params:
           format: "%a %b %d, %Y"
   
-  # Print our shell to terminal
-  - trigger: ":shell"
-    replace: "{{output}}"
+  - trigger: "tdate"
+    replace: "{{filedate}}"
     vars:
-      - name: output
-        type: shell
+      - name: filedate
+        type: date
         params:
-          cmd: "echo 'echo $SHELL'"
+          format: "%m.%d.%Y"
 
-  # And much more! For more information, visit the docs: https://espanso.org/docs/
+  - trigger: ":eag"
+    replace: "Ed Goodwin"
+
+  - trigger: ":rana"
+    replace: "Rana Analytics"
+
+  - trigger: ":cc"
+    replace: "Coltwood Capital"
+
+  - trigger: "fname"
+    replace: "-eag-{{filedate}}."
+    vars:
+      - name: filedate
+        type: date
+        params:
+          format: "%Y%m%d"

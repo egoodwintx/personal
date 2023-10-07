@@ -1,8 +1,8 @@
-name: vscode
-filter_exec: code
-backend: Clipboard
+#name: vscode
+#filter_exec: code
+#backend: Clipboard
 
-extra_includes:
-  - "../../match/personal/_python_snippets.yml"
-  - "../../match/personal/_rust_snippets.yml"
-  - "../../match/personal/_bash_snippets.yml"
+#extra_includes:
+#  - "../../match/personal/_python_snippets.yml"
+#  - "../../match/personal/_rust_snippets.yml"
+#  - "../../match/personal/_bash_snippets.yml"
