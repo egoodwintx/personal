@@ -7,6 +7,9 @@
 
 # Matches are substitution rules: when you type the "trigger" string
 # it gets replaced by the "replace" string.
+imports:
+  - "./personal/_coding_snippets.yml"
+
 matches:
   # NOTE: espanso uses YAML to define matches, so pay attention to the indentation!
 
