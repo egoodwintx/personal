@@ -93,13 +93,14 @@ xterm*|rxvt*)
 esac
 
 export PS1
-
-# init
-echo ""
-echo "                --=( $HOSTNAME sys profile )=-- "
-uptime
-users
-df -l | grep "/usr/"
-echo ""
-echo ""
-
+if [ "$SSH_TTY" ]
+then
+    # init
+    echo ""
+    echo "                --=( $HOSTNAME sys profile )=-- "
+    uptime
+    users
+    df -l | grep "/usr/"
+    echo ""
+    echo ""
+fi
