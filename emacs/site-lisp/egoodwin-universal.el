@@ -51,8 +51,8 @@
       (cons '("\\.mmd.txt" . markdown-mode) auto-mode-alist))
 
 ;; load preferred theme
-(require 'autothemer)
-(load-theme 'catppuccin-mocha t)
+;; (require 'autothemer)
+;; (load-theme 'catppuccin-mocha t)
 
 ;; set up org-mode global bindings
 (global-set-key (kbd "C-c l") #'org-store-link)
