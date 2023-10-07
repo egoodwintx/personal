@@ -1,0 +1,29 @@
+# ~/.cwmrc
+# CWM config file
+# author : Ed Goodwin
+# date : 09.16.2023
+#
+
+borderwidth 2
+color activeborder "#b4befe"
+color inactiveborder "#f38ba8"
+gap 0 0 0 180
+
+# bindings
+# C = Ctrl
+# M = Alt
+# S = Shift
+# 4 = Windows/Apple Cmd key
+# M1 = Left Mouse
+# M2 = Middle Mouse
+# M3 = Right Mouse
+
+bind CM-r restart
+bind CM-q quit
+
+# sticky yes
+
+# Application menu
+command terminal urxvt
+command firefox firefox-esr
+command emacs emacs

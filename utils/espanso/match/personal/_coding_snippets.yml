@@ -1,0 +1,4 @@
+---
+matches:
+  - trigger: ":gitremote"
+    form: "git remote set-url origin git@github.com:egoodwintx/[[myrepo]].git"

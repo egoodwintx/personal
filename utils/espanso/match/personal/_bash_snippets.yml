@@ -1,7 +1,7 @@
-matches:
-  - trigger: "bashhead"
+#matches:
+#  - trigger: "bashhead"
   
-    form: |
+#    form: |
       #----------------------------------------------------
       # [[filename]].sh
       # project: [[projectname]]
@@ -12,13 +12,13 @@ matches:
       #
       #---------------------------------------------------
 
-    form_fields:
-          text:
-            multiline: true
+#    form_fields:
+#          text:
+    #         multiline: true
 
 
-    vars:
-      - name: cdate
-        type: date
-        params:
-          format: "%d.%m.%Y%"
+    # vars:
+    #   - name: cdate
+    #     type: date
+    #     params:
+    #       format: "%d.%m.%Y%"
