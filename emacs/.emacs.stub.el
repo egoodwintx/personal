@@ -23,7 +23,7 @@
 (require 'personal-info)
 
 (package-initialize)
-
+(setq default-tab-width 2)
 
 ;; Python
 ;; (setq python-shell-interpreter "C:\Python33\python.exe")
