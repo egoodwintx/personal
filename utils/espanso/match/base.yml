@@ -10,7 +10,8 @@
 imports:
   - "./personal/_coding_snippets.yml"
   - "./personal/_markdown_snippets.yml"
-  
+  - "./personal/_python_snippets.yml"
+   
 matches:
   # NOTE: espanso uses YAML to define matches, so pay attention to the indentation!
 

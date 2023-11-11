@@ -2,3 +2,13 @@
 matches:
   - trigger: ":gitremote"
     form: "git remote set-url origin git@github.com:egoodwintx/[[myrepo]].git"
+
+  - trigger: ":cshhead"
+    form: |
+      //------------------------------------
+      // file: [[filename]]
+      // author: Ed Goodwin
+      // date: [[date]]
+      // description: [[description]]
+      //
+      //------------------------------------
