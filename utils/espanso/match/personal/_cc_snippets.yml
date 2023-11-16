@@ -3,10 +3,11 @@ matches:
   - trigger: ":chead"
     replace: |
       //---------------------------------------------------------
-      // :
+      // file:
+      // project: 
       // author: Ed Goodwin
       // date:
-      // description
+      // description:
       //
       //---------------------------------------------------------
 
