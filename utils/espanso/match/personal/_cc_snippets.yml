@@ -10,3 +10,10 @@ matches:
       // description:
       //
       //---------------------------------------------------------
+      #include <stdio.h>
+      #include <stdlib.h>
+      
+  - trigger: :std
+    replace: |
+      #include <stdio.h>
+      #include <stdlib.h>

@@ -1,9 +1,10 @@
 matches:
   - trigger: ":pyhead"
     form: |
-      """
-      Title: [[pytitle]]
-      Date: [[today]]
-      Author: Ed Goodwin
-      Description: [[pydescription]]
-      """
+      #----------------------------------------------------------
+      # Filename:
+      # Created By: Ed Goodwin
+      # Date Created:
+      # Description:
+      #----------------------------------------------------------
+      import os
