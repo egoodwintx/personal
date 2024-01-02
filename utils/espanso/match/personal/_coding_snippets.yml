@@ -4,11 +4,24 @@ matches:
     form: "git remote set-url origin git@github.com:egoodwintx/[[myrepo]].git"
 
   - trigger: ":cshhead"
-    form: |
+    replace: |
       //------------------------------------
-      // file: [[filename]]
+      // file: 
       // author: Ed Goodwin
-      // date: [[date]]
-      // description: [[description]]
+      // date: 
+      // description: 
       //
       //------------------------------------
+
+  - trigger: ":oshead"
+    replace: |
+      /*
+      //------------------------------------
+      // file: 
+      // author: Ed Goodwin
+      // date: 
+      // usage: 
+      // description: 
+      //
+      //------------------------------------
+      */
