@@ -28,3 +28,6 @@ matches:
 
   - trigger: ":rgxa"
     replace: "([a-zA-Z0-9 ]+)"
+
+  - trigger: ":osdebug"
+    replace: 'if(__DEBUG_MODE__) {BRApi.ErrorLog.LogMessage(si, "errorstr");}'
