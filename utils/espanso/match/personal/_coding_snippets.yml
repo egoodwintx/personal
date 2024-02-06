@@ -30,7 +30,7 @@ matches:
     replace: "([a-zA-Z0-9 ]+)"
 
   - trigger: ":osdebug"
-    replace: 'if(__DEBUG_MODE__) {BRApi.ErrorLog.LogMessage(si, "errorstr");}'
+    replace: if(__DEBUG_MODE__) {BRApi.ErrorLog.LogMessage(si, "errorstr");}
 
   - trigger: ":osargs"
     replace: SessionInfo si, BRGlobals globals, FinanceRulesApi api, FinanceRulesArgs args
