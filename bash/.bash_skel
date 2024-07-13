@@ -101,7 +101,7 @@ case $- in
         *) return;;
 esac
 
-# init
+# interactive shell init
 echo ""
 echo "                --=( $HOSTNAME sys profile )=-- "
 uptime
