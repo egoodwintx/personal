@@ -1,0 +1,30 @@
+xrdb -merge ~/.Xresources
+local WM=$(~/bin/getwm.sh)
+
+
+. ~/.fehbg &
+albert &
+gnome-terminal &
+
+ case $DESKTOP_SESSION in
+     i3)
+        polybar -c "~/.config/polybar/config_i3.ini" mainbar &
+        exec i3
+         ;;
+    
+     openbsd-cwm)
+        polybar -c "~/.config/polybar/config_cwm.ini" mainbar &
+        exec openbsd-cwm
+        ;;
+
+     sway)
+        polybar -c "~/.config/polybar/config_sway.ini" mainbar &
+	    exec sway
+	;;
+
+     *)
+        polybar -c "~/.config/polybar/config_cwm.ini" mainbar &
+        exec openbsd-cwm
+        ;;
+esac
+    
