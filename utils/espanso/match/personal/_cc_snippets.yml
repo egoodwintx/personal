@@ -17,3 +17,15 @@ matches:
     replace: |
       #include <stdio.h>
       #include <stdlib.h>
+
+  - trigger: ":cpphead"
+    replace: |
+      //---------------------------------------------------------
+      // file:
+      // project: 
+      // author: Ed Goodwin
+      // date:
+      // description:
+      //
+      //---------------------------------------------------------
+      #include <iostream>s
