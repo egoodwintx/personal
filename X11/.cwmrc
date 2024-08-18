@@ -7,7 +7,14 @@
 borderwidth 2
 color activeborder "#b4befe"
 color inactiveborder "#f38ba8"
-gap 0 0 0 180
+color menubg "#313244"
+color font "#74c7ec"
+gap 60 5 5 5
+ignore polybar
+
+moveamount 10
+
+
 
 # bindings
 # C = Ctrl
@@ -18,12 +25,17 @@ gap 0 0 0 180
 # M2 = Middle Mouse
 # M3 = Right Mouse
 
-bind CM-r restart
-bind CM-q quit
+
+# snaps
+bind-key C4-w window-snap-up-right
+bind-key C4-q window-snap-up-left
+bind-key C4-s window-snap-down-right
+bind-key C4-a window-snap-down-left
 
 # sticky yes
 
 # Application menu
-command terminal urxvt
+command terminal gnome-terminal
 command firefox firefox-esr
 command emacs emacs
+command vscode code
