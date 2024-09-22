@@ -119,7 +119,7 @@ prompt_git_status() {
 
       echo -e $s
   else
-      echo -e "\001\e[01;35m\002"
+      echo -e "\001\e[01;95m\002"
   fi
 }
 
