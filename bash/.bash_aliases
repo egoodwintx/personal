@@ -6,6 +6,8 @@
 # 
 #-----------------------------------------
 
+alias home='cd; clear;'
+
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     alias ls='ls --color=auto'
     alias la='ls --color=auto -al'
