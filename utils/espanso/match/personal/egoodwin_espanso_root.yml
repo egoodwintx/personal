@@ -1,2 +1,15 @@
 imports:
   - "./_cc_snippets.yml"
+
+matches:
+  - trigger: ":5MJ"
+    replace: |
+      ---
+      # 5 Minute Journal
+      ## Quote
+      ## Start of Day
+      ### I am grateful for...
+      ### What would make today great?
+      ## End of Day
+      ### What was amazing?
+      ### What could have gone better?
