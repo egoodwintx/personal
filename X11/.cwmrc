@@ -36,6 +36,9 @@ bind-key C4-a window-snap-down-left
 
 # Application menu
 command terminal gnome-terminal
-command firefox firefox-esr
+#command firefox firefox-esr
+command browser vivaldi.vivaldi-stable
 command emacs emacs
 command vscode code
+command pdf evince
+command files nemo
