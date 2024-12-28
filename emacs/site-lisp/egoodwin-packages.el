@@ -12,4 +12,3 @@
 
 ;; to make emacs recognize as a package
 (provide 'egoodwin-packages)
-
