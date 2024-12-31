@@ -6,6 +6,8 @@ xcalc.ti.bevel.background:             #51576d
 xcalc.ti.bevel.screen.background:      #51576d
 xcalc.ti.bevel.screen.DEG.background:  #51576d
 xcalc.ti.bevel.screen.DEG.foreground:  #81c8be
+xcalc.ti.bevel.screen.DEC.background:  #51576d
+xcalc.ti.bevel.screen.DEC.foreground:  #81c8be
 xcalc.ti.bevel.screen.GRAD.background: #51576d
 xcalc.ti.bevel.screen.GRAD.foreground: #81c8be
 xcalc.ti.bevel.screen.RAD.background:  #51576d
