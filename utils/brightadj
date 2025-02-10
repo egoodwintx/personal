@@ -1,0 +1,4 @@
+#!/usr/bin/bash
+# bright screen 25
+# dim screen 10
+echo $1 | sudo tee /sys/class/backlight/acpi_video0/brightness
