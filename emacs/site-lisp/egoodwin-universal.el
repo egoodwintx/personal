@@ -16,6 +16,10 @@
 ;; Disable the splash screen (to enable it agin, replace the t with 0)
 (setq inhibit-splash-screen t)
 
+;; set bash as the default shell
+(setq explicit-shell-file-name "/usr/bin/bash")
+(setq shell-file-name "/usr/bin/bash")
+
 ;; Enable transient mark mode
 (transient-mark-mode 1)
 
@@ -33,7 +37,7 @@
 (package-initialize)
 
 ;; commonly used packages
-(require 'pabbrev)
+;;(require 'pabbrev)
 ;; (require 'python)
 ;;      (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
 ;; (require 'org)

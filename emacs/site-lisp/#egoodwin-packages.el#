@@ -19,7 +19,7 @@
 (add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
 
 ;; install a package, if needed
-;; flycheck, semantic, rtags, Cscope, autocomplete, mastodon, speedbar
+;; flycheck, semantic, rtags, Cscope, autocomplete, mastodon, speedbar2
 ;;(use-package gptel :ensure t :config (setq gptel-api-key (getenv "OPENAI_API_KEY")))
 
 
