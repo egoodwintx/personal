@@ -27,13 +27,13 @@
 ;;     (normal-top-level-add-subdirs-to-load-path))
 (require 'package)
 ;; give vertical frames
-;;(split-window-horizontally)
-;; (package-initialize)
-;;(add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/"))
-;;(add-to-list 'package-archives '("nongnu" . "https://elpa.nongnu.org/nongnu/autothemer.html"))
-;;(add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
+(split-window-horizontally)
+
+(add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/"))
+(add-to-list 'package-archives '("nongnu" . "https://elpa.nongnu.org/nongnu/autothemer.html"))
+(add-to-list 'package-archives '("marmalade" . "http://marmalade-repo.org/packages/"))
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
-;;(add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/"))
+(add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/"))
 (package-initialize)
 
 (column-number-mode)
@@ -61,3 +61,8 @@
 (setq display-time-12hr-format t)
 (display-time)
 (global-visual-line-mode t) ;; soft word wrap in display
+
+;; start sr-speedbar
+(defun start-sr-speedbar ()
+  (sr-speedbar-open))
+(add-hook 'window-setup-hook 'start-sr-speedbar)
