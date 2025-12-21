@@ -26,11 +26,11 @@
 ;;(use-package gptel :ensure t :config (setq gptel-api-key (getenv "OPENAI_API_KEY")))
 
 
-(add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
-(add-to-list 'auto-mode-alist '("\\.c\\'" . cc-mode))
-(add-to-list 'auto-mode-alist '("\\.h\\'" . cc-mode))
-(add-to-list 'auto-mode-alist '("\\.cpp\\'" . cc-mode))
-(add-to-list 'auto-mode-alist '("\\.hpp\\'" . cc-mode))
-(add-to-list 'auto-mode-alist '("\\.rb\\'" . ruby-mode))
+;; (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
+;; (add-to-list 'auto-mode-alist '("\\.c\\'" . cc-mode))
+;; (add-to-list 'auto-mode-alist '("\\.h\\'" . cc-mode))
+;; (add-to-list 'auto-mode-alist '("\\.cpp\\'" . cc-mode))
+;; (add-to-list 'auto-mode-alist '("\\.hpp\\'" . cc-mode))
+;; (add-to-list 'auto-mode-alist '("\\.rb\\'" . ruby-mode))
 
 
