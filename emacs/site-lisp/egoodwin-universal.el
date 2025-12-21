@@ -36,16 +36,13 @@
 ;;(add-to-list 'package-archives '("org" . "https://orgmode.org/elpa/"))
 (package-initialize)
 
-;; commonly used packages
-;;(require 'pabbrev)
-;; (require 'python)
-;;      (add-to-list 'auto-mode-alist '("\\.py\\'" . python-mode))
-;; (require 'org)
+(column-number-mode)
+(global-display-line-numbers-mode t)
 
 ;; Enable Markdown Mode
 (autoload 'markdown-mode "markdown-mode.el"
    "Major mode for editing Markdown files" t)
- (setq auto-mode-alist
+(setq auto-mode-alist
       (cons '("\\.txt" . markdown-mode) auto-mode-alist))
 (setq auto-mode-alist
       (cons '("\\.txt" . markdown-mode) auto-mode-alist))
