@@ -27,7 +27,7 @@
 ;;     (normal-top-level-add-subdirs-to-load-path))
 (require 'package)
 ;; give vertical frames
-(split-window-horizontally)
+;;(split-window-horizontally)
 
 (add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/"))
 (add-to-list 'package-archives '("nongnu" . "https://elpa.nongnu.org/nongnu/autothemer.html"))
