@@ -51,6 +51,10 @@
 (setq auto-mode-alist      
       (cons '("\\.mmd.txt" . markdown-mode) auto-mode-alist))
 
+
+;; enable C# mode
+(add-to-list 'auto-mode-alist '("\\.cs\\'" . csharp-mode))
+
 ;; set up org-mode global bindings
 (global-set-key (kbd "C-c l") #'org-store-link)
 (global-set-key (kbd "C-c a") #'org-agenda)
@@ -68,33 +72,22 @@
 (add-hook 'window-setup-hook 'start-sr-speedbar)
 
 ;; setup C# coding utils
-(use-package csharp-mode :ensure t :init
+(use-package csharp-mode
+  :ensure t
+  :mode "\\.cs\\'"  ;; <--- This tells Emacs: "Open .cs files with this mode"
+  :init
   (add-hook 'csharp-mode-hook #'company-mode)
-  (add-hook 'csharp-mode-hook #'rainbow-delimiters-mode))
-
-(use-package company :ensure t :mode "company-mode")
-(use-package company-box :ensure t
-  :hook (company-mode . company-box-mode))
+;;  (add-hook 'csharp-mode-hook #'rainbow-delimiters-mode)
+  (add-hook 'csharp-mode-hook #'lsp)) ;; Enable LSP for intellisense/highlighting
 
 (use-package lsp-mode
-  :ensure t
-  :init
-  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
-  (setq lsp-keymap-prefix "C-c l")
-  :hook ((csharp-mode . lsp)
-	 (python-mode . (lambda ()
-			  (require 'lsp-python-ms)
-			  (lsp))))
-  :commands lsp)
+  :ensure t)
 
 (use-package lsp-ui
   :ensure t
   :commands lsp-ui-mode)
 
-(use-package flycheck
-	     :ensure t
-	     :init (global-flycheck-mode))
+;;(use-package flycheck
+;;	     :ensure t
+;;	     :init (global-flycheck-mode))
 
-(use-package lsp-treemacs
-  :ensure t
-  :commands lsp-treemacs-errors-list)
