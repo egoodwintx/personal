@@ -71,7 +71,31 @@
   (sr-speedbar-open))
 (add-hook 'window-setup-hook 'start-sr-speedbar)
 
+
+;; use company-mode
+(use-package company
+  :ensure t
+  :config
+  (setq company-idle-delay 0.0
+        company-minimum-prefix-length 1)
+  (global-company-mode t))
+
+(use-package lsp-mode
+  :ensure t
+  :hook (csharp-mode . lsp)
+  :commands lsp
+  :custom
+  ;; This is the "magic" line that connects LSP to Company
+  (lsp-completion-provider :capf)
+  :config
+  (lsp-enable-which-key-integration t))
+
 ;; setup C# coding utils
+;; need to add csharp-ls to the dotnet toolset
+;;  run 'dotnet tool install --global csharp-ls
+;;  then make sure to add the following to your bash PATH
+;;  export PATH="$PATH:/home/egoodwin/.dotnet/tools
+;;  currently csharp-ls runs on the dotnet 9.0 toolkit
 (use-package csharp-mode
   :ensure t
   :mode "\\.cs\\'"  ;; <--- This tells Emacs: "Open .cs files with this mode"
@@ -79,9 +103,6 @@
   (add-hook 'csharp-mode-hook #'company-mode)
 ;;  (add-hook 'csharp-mode-hook #'rainbow-delimiters-mode)
   (add-hook 'csharp-mode-hook #'lsp)) ;; Enable LSP for intellisense/highlighting
-
-(use-package lsp-mode
-  :ensure t)
 
 (use-package lsp-ui
   :ensure t
