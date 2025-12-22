@@ -66,3 +66,35 @@
 (defun start-sr-speedbar ()
   (sr-speedbar-open))
 (add-hook 'window-setup-hook 'start-sr-speedbar)
+
+;; setup C# coding utils
+(use-package csharp-mode :ensure t :init
+  (add-hook 'csharp-mode-hook #'company-mode)
+  (add-hook 'csharp-mode-hook #'rainbow-delimiters-mode))
+
+(use-package company :ensure t :mode "company-mode")
+(use-package company-box :ensure t
+  :hook (company-mode . company-box-mode))
+
+(use-package lsp-mode
+  :ensure t
+  :init
+  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  (setq lsp-keymap-prefix "C-c l")
+  :hook ((csharp-mode . lsp)
+	 (python-mode . (lambda ()
+			  (require 'lsp-python-ms)
+			  (lsp))))
+  :commands lsp)
+
+(use-package lsp-ui
+  :ensure t
+  :commands lsp-ui-mode)
+
+(use-package flycheck
+	     :ensure t
+	     :init (global-flycheck-mode))
+
+(use-package lsp-treemacs
+  :ensure t
+  :commands lsp-treemacs-errors-list)
