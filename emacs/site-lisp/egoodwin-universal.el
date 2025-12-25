@@ -20,8 +20,9 @@
 (setq explicit-shell-file-name "/usr/bin/bash")
 (setq shell-file-name "/usr/bin/bash")
 
-;; Enable transient mark mode
+;; Enable useful settings
 (transient-mark-mode 1)
+(recentf-mode 1)
 
 ;; (if (fboundp 'normal-top-level-add-subdirs-to-load-path)
 ;;     (normal-top-level-add-subdirs-to-load-path))
