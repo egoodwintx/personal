@@ -118,3 +118,20 @@
 ;;	     :ensure t
 ;;	     :init (global-flycheck-mode))
 
+;; golden-ratio setup
+(use-package golden-ratio
+  :ensure t
+  :hook (after-init . golden-ratio-mode)
+  )
+
+;; icon setup
+(use-package all-the-icons
+  :ensure t
+  :if (display-graphic-p))
+
+(use-package all-the-icons-completion
+  :ensure t
+  :defer
+  :hook (marginalia-mode . #'all-the-icons-marginalia-set)
+  :init
+  (all-the-icons-completion-mode))
