@@ -15,6 +15,8 @@
 
 ;; Disable the splash screen (to enable it agin, replace the t with 0)
 (setq inhibit-splash-screen t)
+(menu-bar-mode -1)
+(tool-bar-mode -1)
 
 ;; set bash as the default shell
 (setq explicit-shell-file-name "/usr/bin/bash")
