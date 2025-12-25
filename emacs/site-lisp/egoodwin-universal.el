@@ -25,6 +25,10 @@
 (recentf-mode 1)
 (global-hl-line-mode t)
 
+;; set different location for Custom file
+(setq custom-file (locate-user-emacs-file "site-lisp/egoodwin-custom-vars.el"))
+(load custom-file 'noerror 'nomessage)
+
 ;; (if (fboundp 'normal-top-level-add-subdirs-to-load-path)
 ;;     (normal-top-level-add-subdirs-to-load-path))
 (require 'package)
