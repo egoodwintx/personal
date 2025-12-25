@@ -23,6 +23,7 @@
 ;; Enable useful settings
 (transient-mark-mode 1)
 (recentf-mode 1)
+(global-hl-line-mode t)
 
 ;; (if (fboundp 'normal-top-level-add-subdirs-to-load-path)
 ;;     (normal-top-level-add-subdirs-to-load-path))
