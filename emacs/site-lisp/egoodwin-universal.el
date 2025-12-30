@@ -75,9 +75,9 @@
 (global-visual-line-mode t) ;; soft word wrap in display
 
 ;; start sr-speedbar
-(defun start-sr-speedbar ()
-  (sr-speedbar-open))
-(add-hook 'window-setup-hook 'start-sr-speedbar)
+;;(defun start-sr-speedbar ()
+;;  (sr-speedbar-open))
+;;(add-hook 'window-setup-hook 'start-sr-speedbar)
 
 
 ;; use company-mode
