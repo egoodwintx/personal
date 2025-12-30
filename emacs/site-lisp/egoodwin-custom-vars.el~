@@ -6,7 +6,7 @@
  '(package-selected-packages
    '(all-the-icons-completion all-the-icons-dired catppuccin-theme company flycheck
 			      golden-ratio lsp-ui mastodon paradox paredit rtags
-			      sr-speedbar treemacs-all-the-icons)))
+			      sr-speedbar)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

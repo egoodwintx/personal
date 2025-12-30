@@ -137,3 +137,23 @@
   :hook (marginalia-mode . #'all-the-icons-marginalia-set)
   :init
   (all-the-icons-completion-mode))
+
+(use-package all-the-icons-dired
+  :ensure t
+  :defer
+  :init
+  (all-the-icons-dired-mode))
+
+(use-package treemacs-all-the-icons
+  :ensure t
+  :defer
+  :init
+  )
+
+;; start sr-speedbar
+(add-hook 'window-setup-hook 'treemacs)
+
+
+
+
+
