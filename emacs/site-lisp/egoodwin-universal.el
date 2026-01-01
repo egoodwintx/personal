@@ -150,10 +150,11 @@
   :init
   )
 
-;; start sr-speedbar
-(add-hook 'window-setup-hook 'treemacs)
+;; start treemacs
+(add-hook 'emacs-startup-hook 'treemacs)
 
-
+(require 'dashboard)
+(dashboard-setup-startup-hook)
 
 
 
