@@ -9,6 +9,7 @@
 alias home='cd; clear;'
 
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+   echo "Linux detected"
     alias ls='ls --color=auto'
     alias la='ls --color=auto -al'
     alias ll='ls -lh --color=auto'
@@ -28,6 +29,16 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
     alias polybar='polybar -c ~/.config/polybar/config.ini mainbar 2>>/dev/null'
     # figure out last time FreeBSD updated
     #alias pupd='sqlite3 /var/db/pkg/local.sqlite "select datetime(time, \"unixepoch\") from packages order by time desc limit 1"'        # ...
+
+
+    ## handle Omarchy specific aliases
+    is_omarchy() {
+    		 [ -d ~/.config/omarchy/ ]
+		 }
+    if is_omarchy; then
+       echo "Omarchy alias init"
+       alias pkg_refresh='sudo pacman -Syu'
+    fi
 elif [[ "$OSTYPE" == "darwin"* ]]; then
     echo "OSX detected."
 elif [[ "$OSTYPE" == "cygwin" ]]; then
