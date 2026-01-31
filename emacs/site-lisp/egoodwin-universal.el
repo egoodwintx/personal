@@ -22,6 +22,9 @@
 (setq explicit-shell-file-name "/usr/bin/bash")
 (setq shell-file-name "/usr/bin/bash")
 
+;; enable snippets via yasnippet
+(yas-global-mode 1)
+
 ;; Enable useful settings
 (transient-mark-mode 1)
 (recentf-mode 1)
