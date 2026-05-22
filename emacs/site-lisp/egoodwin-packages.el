@@ -18,7 +18,7 @@
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 (add-to-list 'package-archives '("melpa-stable" . "https://stable.melpa.org/packages/") t)
 
-(dolist (package '(use-package flycheck rtags mastodon paradox catppuccin-theme yasnippet))
+(dolist (package '(use-package flycheck mastodon yasnippet dashboard nerd-icons))
   (unless (package-installed-p package)
     (package-install package)))
 

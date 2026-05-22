@@ -157,8 +157,10 @@
 ;; start treemacs
 (add-hook 'emacs-startup-hook 'treemacs)
 
-(require 'dashboard)
-(dashboard-setup-startup-hook)
+(use-package dashboard
+  :ensure t
+  :config
+  (dashboard-setup-startup-hook))
 
 
 
