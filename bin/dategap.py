@@ -56,9 +56,7 @@ def main():
         arg3 = sys.argv[3]
         
         if(validateDate(arg1) and validateDate(arg2) and validatePeriodicity(arg3)):
-            daysint = daysBetween(arg2, arg1)
-            weeksb = weeksBetween(arg2, arg1)
-            
+            daysint = daysBetween(arg1, arg2)            
             print(daysint.days, "days")
 
         else:
