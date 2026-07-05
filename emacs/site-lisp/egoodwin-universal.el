@@ -21,6 +21,7 @@
 ;; set bash as the default shell
 (setq explicit-shell-file-name "/usr/bin/bash")
 (setq shell-file-name "/usr/bin/bash")
+(setq tab-width 2)
 
 ;; enable snippets via yasnippet
 (yas-global-mode 1)
