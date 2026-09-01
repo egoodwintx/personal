@@ -6,6 +6,14 @@
 # 
 #-----------------------------------------
 
+# THIS MUST STAY AT TOP OF FILE. RETURN IF NON-INTERACTIVE SHELL
+# if non-interactive shell then return
+case $- in
+    *i*) ;;
+        *) return;;
+esac
+
+
 
 ###### BEGIN ALIASES #######
 if [ -e $HOME/.bash_aliases ]; then
@@ -142,12 +150,6 @@ xterm*|rxvt*)
 esac
 
 export PS1
-
-# if non-interactive shell then return
-case $- in
-    *i*) ;;
-        *) return;;
-esac
 
 # interactive shell init
 echo ""
