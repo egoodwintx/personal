@@ -1,0 +1,19 @@
+#!/usr/bin/python
+# simple helper script to give me the days or weeks between two dates of format dd/mm/yyyy
+#
+
+import sys
+
+if((sys.argv[1] == "-h") or (sys.argv[1] == "-help")):
+    print("Usage: datagap.py <startdate> <enddate> <periodicity>\n")
+    print(" where startdate and enddate in dd/mm/yyyy format\n")
+    print(" and periodicity is [weeks] or [days]\n")
+
+else if (sys.argv.length == 4):
+    print("Success")
+
+else:
+    print("Requires 3 args")
+
+    
+
