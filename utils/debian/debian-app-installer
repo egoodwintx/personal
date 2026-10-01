@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+SCRIPT_PATH="/usr/local/bin/debian-app-installer"
+
+# Sub-function: Search and install packages via fzf
+install_custom_package() {
+    SELECTED_PKG=$(apt-cache search . | fzf --prompt="Select APT Package: " --preview 'apt-cache show {1}' | awk '{print $1}')
+    
+    if [ -n "$SELECTED_PKG" ]; then
+        echo "Installing $SELECTED_PKG..."
+        sudo apt update && sudo apt install -y "$SELECTED_PKG"
+        read -n 1 -s -r -p "Press any key to close..."
+    fi
+}
+
+# Sub-function: Remove installed packages via fzf
+remove_package() {
+    SELECTED_PKG=$(dpkg-query -W -f='${binary:Package}\t${Summary}\n' | fzf --prompt="Select Package to Remove: " --preview 'apt-cache show {1}' | awk '{print $1}')
+    
+    if [ -n "$SELECTED_PKG" ]; then
+        echo "Removing $SELECTED_PKG..."
+        sudo apt remove --purge -y "$SELECTED_PKG" && sudo apt autoremove -y
+        read -n 1 -s -r -p "Press any key to close..."
+    fi
+}
+
+# Subcommand routing
+case "$1" in
+    "--run-install")
+        install_custom_package
+        exit 0
+        ;;
+    "--run-remove")
+        remove_package
+        exit 0
+        ;;
+    "--run-curated")
+        sudo apt update && sudo apt install -y "$2"
+        read -n 1 -s -r -p "Press any key to close..."
+        exit 0
+        ;;
+esac
+
+# Pre-defined curated menus
+install_curated() {
+    case "$1" in
+        "Browsers")
+            APPS="firefox-esr\nchromium\ntorbrowser-launcher"
+            ;;
+        "Development")
+            APPS="build-essential\ngit\ncurl\nneovim\nvscode"
+            ;;
+        "Media")
+            APPS="vlc\ngimp\nobsproject\naudacity"
+            ;;
+        "Gaming")
+            APPS="steam\nlutris\ngamescope"
+            ;;
+    esac
+
+    SELECTED_APP=$(echo -e "$APPS" | fuzzel --dmenu --prompt "Select $1 App: ")
+    
+    if [ -n "$SELECTED_APP" ]; then
+        alacritty -e bash -c "$SCRIPT_PATH --run-curated $SELECTED_APP"
+    fi
+}
+
+# Main Fuzzel Menu
+MAIN_OPTIONS="Search All APT Packages\nRemove Installed Package\nBrowsers\nDevelopment\nMedia\nGaming"
+
+CHOICE=$(echo -e "$MAIN_OPTIONS" | fuzzel --dmenu --prompt "Debian App Menu: ")
+
+case "$CHOICE" in
+    "Search All APT Packages")
+        alacritty -e bash -c "$SCRIPT_PATH --run-install"
+        ;;
+    "Remove Installed Package")
+        alacritty -e bash -c "$SCRIPT_PATH --run-remove"
+        ;;
+    "Browsers"|"Development"|"Media"|"Gaming")
+        install_curated "$CHOICE"
+        ;;
+    *)
+        exit 0
+        ;;
+esac
