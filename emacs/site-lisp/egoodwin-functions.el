@@ -1,0 +1,39 @@
+;; custom functions for emacs
+
+(require 'package)
+
+(defvar egoodwin-packages-file
+  (expand-file-name "egoodwin-packages.el"
+                    (if (boundp 'emacsrootdir)
+                        emacsrootdir
+                      (file-name-directory (or load-file-name buffer-file-name))))
+  "Path to the file holding the package install list.")
+
+(defun eg-add-package (package)
+  "Add PACKAGE to the `dolist' install list in `egoodwin-packages-file'.
+The file is saved and PACKAGE is installed now if it is not already."
+  (interactive
+   (progn
+     (package-refresh-contents t)
+     (list (intern (completing-read "Package: "
+                                    (mapcar (lambda (p) (symbol-name (car p)))
+                                            package-archive-contents))))))
+  (when (stringp package)
+    (setq package (intern package)))
+  (with-current-buffer (find-file-noselect egoodwin-packages-file)
+    (save-excursion
+      (goto-char (point-min))
+      (unless (re-search-forward "(dolist (package '(" nil t)
+        (error "No (dolist (package '(...)) form found in %s" egoodwin-packages-file))
+      (backward-char)                   ; now on the list's opening paren
+      (if (memq package (read (current-buffer)))
+          (message "%s is already in the package list" package)
+        ;; `read' left point just after the closing paren
+        (backward-char)
+        (insert " " (symbol-name package))
+        (save-buffer)
+        (message "Added %s to %s" package egoodwin-packages-file))))
+  (unless (package-installed-p package)
+    (package-install package)))
+
+(provide 'egoodwin-functions)
