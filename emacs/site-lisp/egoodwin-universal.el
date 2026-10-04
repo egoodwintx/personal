@@ -30,6 +30,7 @@
 (transient-mark-mode 1)
 (recentf-mode 1)
 (global-hl-line-mode t)
+(winpulse-mode t)
 
 ;; set different location for Custom file
 (setq custom-file (locate-user-emacs-file "site-lisp/egoodwin-custom-vars.el"))
