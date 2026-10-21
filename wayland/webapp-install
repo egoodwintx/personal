@@ -1,0 +1,416 @@
+#!/bin/bash
+
+# webapp-install: Create a desktop launcher for a web app with Dashboard Icons
+# Inspired by Omarchy's TUI webapp installer, tailored for Fuzzel and Wayland
+
+set -eo pipefail
+
+ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
+SCALABLE_ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
+DESKTOP_DIR="$HOME/.local/share/applications"
+CACHE_DIR="$HOME/.cache/webapp-manager"
+DATA_DIR="$HOME/.local/share/webapp-manager"
+ICON_CATALOG="$DATA_DIR/dashboard-icons.txt"
+DASHBOARD_CDN_BASE="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons"
+
+# Ensure PATH includes ~/.local/bin
+export PATH="$HOME/.local/bin:$PATH"
+
+mkdir -p "$ICON_DIR" "$SCALABLE_ICON_DIR" "$DESKTOP_DIR" "$CACHE_DIR" "$DATA_DIR"
+
+cleanup() {
+  if [[ -n "${TMP_DOWNLOAD:-}" && -f "$TMP_DOWNLOAD" ]]; then
+    rm -f "$TMP_DOWNLOAD"
+  fi
+}
+trap cleanup EXIT INT TERM
+
+# Utility: convert name to safe lowercase kebab-case icon name
+safe_icon_name() {
+  printf '%s\n' "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed 's/[^[:alnum:]]\+/-/g; s/^-//; s/-$//'
+}
+
+# Validate plain name (no slashes)
+validate_plain_name() {
+  local name="$1"
+  if [[ -z "$name" ]]; then
+    echo "Error: App name cannot be empty." >&2
+    return 1
+  fi
+  if [[ "$name" == */* ]]; then
+    echo "Error: App name cannot contain '/': $name" >&2
+    return 1
+  fi
+  return 0
+}
+
+# Normalize WebApp URL
+normalize_webapp_url() {
+  local url="$1"
+  if [[ ! "$url" =~ ^[a-zA-Z][a-zA-Z0-9+.-]*: ]]; then
+    url="https://$url"
+  fi
+  printf '%s' "$url"
+}
+
+# Validate WebApp URL
+validate_webapp_url() {
+  local url="$1"
+  if [[ -z "$url" ]]; then
+    echo "Error: Web app URL cannot be empty." >&2
+    return 1
+  fi
+  if [[ "$url" =~ [[:space:]] ]]; then
+    echo "Error: Web app URL must not contain whitespace." >&2
+    return 1
+  fi
+  if [[ ! "${url,,}" =~ ^https?:// ]]; then
+    echo "Error: Web app URL must start with http:// or https://" >&2
+    return 1
+  fi
+  return 0
+}
+
+# Compute Chromium StartupWMClass from URL (matches Omarchy spec)
+compute_window_class() {
+  local url="${1:-}"
+  local address="${url#*://}"
+  address="${address%%[?#]*}"
+  local host="${address%%/*}"
+  local path="${address:${#host}}"
+  host="${host##*@}"
+  host="${host%%:*}"
+  printf 'chrome-%s_%s-Default\n' "${host,,}" "${path:-/}" | sed 's|/|_|g'
+}
+
+# Desktop entry string escaping per freedesktop spec
+desktop_string_escape() {
+  local value="$1"
+  value="${value//\\/\\\\}"
+  value="${value//$'\t'/\\t}"
+  value="${value//$'\r'/\\r}"
+  value="${value//$'\n'/\\n}"
+  [[ "$value" == " "* ]] && value="\\s${value# }"
+  printf '%s' "$value"
+}
+
+# Desktop entry exec arg quoting
+desktop_exec_arg() {
+  local escaped
+  escaped=$(printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e 's/`/\\`/g' -e 's/\$/\\$/g' -e 's/%/%%/g')
+  printf '"%s"' "$escaped"
+}
+
+# Download an icon and check if it's a valid image
+download_image() {
+  local url="$1"
+  local dest="$2"
+  curl -fsSL --max-time 15 -o "$dest" "$url" 2>/dev/null &&
+    [[ -s "$dest" && $(file -b --mime-type "$dest") =~ (image/|application/xml|text/xml|text/plain) ]]
+}
+
+# Fetch site favicon / apple-touch-icon
+fetch_site_icon() {
+  local site_url="$1" dest="$2"
+  local origin page icon_url
+  origin=$(sed -E 's|^(https?://[^/]+).*|\1|' <<<"$site_url")
+
+  page=$(curl -fsSL --max-time 5 "$site_url" 2>/dev/null | head -c 100000 | tr '\n' ' ')
+  icon_url=$(grep -oiE "<link[^>]*rel=[\"'][^\"']*apple-touch-icon[^\"']*[\"'][^>]*>" <<<"$page" |
+    grep -oiE "href=[\"'][^\"']+" | head -1 | sed -E "s/^href=[\"']//")
+
+  case "$icon_url" in
+    http://* | https://*) ;;
+    //*) icon_url="https:$icon_url" ;;
+    /*) icon_url="$origin$icon_url" ;;
+    ?*) icon_url="$origin/$icon_url" ;;
+  esac
+
+  { [[ -n "$icon_url" ]] && download_image "$icon_url" "$dest"; } ||
+    download_image "$origin/apple-touch-icon.png" "$dest" ||
+    download_image "https://www.google.com/s2/favicons?domain=${site_url}&sz=256" "$dest"
+}
+
+# Normalize dashboard icons URL from various input formats
+resolve_dashboard_icon_url() {
+  local ref="$1"
+  ref=$(echo "$ref" | xargs)
+
+  # dashboardicons.com/icons/<name>
+  if [[ "$ref" =~ dashboardicons\.com/icons/([^/?#]+) ]]; then
+    local icon_name="${BASH_REMATCH[1]}"
+    echo "$DASHBOARD_CDN_BASE/png/${icon_name}.png"
+    return 0
+  fi
+
+  # Direct HTTP URL
+  if [[ "$ref" =~ ^https?:// ]]; then
+    echo "$ref"
+    return 0
+  fi
+
+  # Local file
+  if [[ -f "$ref" ]]; then
+    echo "$ref"
+    return 0
+  fi
+
+  # Plain icon name or filename (e.g. "youtube" or "youtube.png")
+  local base_name
+  base_name=$(basename "$ref")
+  base_name="${base_name%.*}"
+  echo "$DASHBOARD_CDN_BASE/png/${base_name}.png"
+}
+
+# Ensure Dashboard Icons catalog is available
+ensure_icon_catalog() {
+  if [[ -s "$ICON_CATALOG" ]]; then
+    return 0
+  fi
+
+  # Try fetching from GitHub API
+  local tmp_tree
+  tmp_tree=$(mktemp)
+  if curl -fsSL --max-time 10 "https://api.github.com/repos/homarr-labs/dashboard-icons/git/trees/main?recursive=1" -o "$tmp_tree" 2>/dev/null; then
+    python3 -c "
+import json, sys
+try:
+    with open('$tmp_tree') as f:
+        data = json.load(f)
+    pngs = sorted([x['path'][4:-4] for x in data.get('tree', []) if x['path'].startswith('png/') and x['path'].endswith('.png')])
+    if pngs:
+        with open('$ICON_CATALOG', 'w') as out:
+            out.write('\n'.join(pngs) + '\n')
+except Exception:
+    sys.exit(1)
+" && rm -f "$tmp_tree" && return 0
+    rm -f "$tmp_tree"
+  fi
+
+  # Fallback to local cache if present
+  if [[ -s "$CACHE_DIR/dashboard-icons.txt" ]]; then
+    cp "$CACHE_DIR/dashboard-icons.txt" "$ICON_CATALOG"
+    return 0
+  fi
+
+  return 1
+}
+
+# Install and format the icon (into 256x256 square PNG + SVG if applicable)
+install_icon() {
+  local src_file="$1"
+  local icon_id="$2"
+  local dest_png="$ICON_DIR/${icon_id}.png"
+  local mime_type
+  mime_type=$(file -b --mime-type "$src_file" || echo "image/png")
+
+  if [[ "$mime_type" == *"svg"* || "$src_file" == *.svg ]]; then
+    cp "$src_file" "$SCALABLE_ICON_DIR/${icon_id}.svg" 2>/dev/null || true
+    if command -v magick &>/dev/null; then
+      magick -background none "$src_file" -resize 256x256 -gravity center -extent 256x256 "$dest_png"
+    elif command -v convert &>/dev/null; then
+      convert -background none "$src_file" -resize 256x256 -gravity center -extent 256x256 "$dest_png"
+    else
+      cp "$src_file" "$dest_png"
+    fi
+  else
+    if command -v magick &>/dev/null; then
+      magick "$src_file" -resize 256x256 -background none -gravity center -extent 256x256 "$dest_png"
+    elif command -v convert &>/dev/null; then
+      convert "$src_file" -resize 256x256 -background none -gravity center -extent 256x256 "$dest_png"
+    else
+      cp "$src_file" "$dest_png"
+    fi
+  fi
+
+  gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" &>/dev/null || true
+}
+
+# --- CLI / Non-interactive or Interactive flow ---
+
+if (( $# >= 2 )); then
+  # Non-interactive CLI invocation: webapp-install <name> <url> [icon-ref]
+  APP_NAME="$1"
+  validate_plain_name "$APP_NAME"
+  APP_URL=$(normalize_webapp_url "$2")
+  validate_webapp_url "$APP_URL"
+  RAW_ICON="${3:-}"
+  INTERACTIVE=false
+else
+  INTERACTIVE=true
+  # Check if gum is available
+  if ! command -v gum &>/dev/null; then
+    echo "Error: 'gum' is required for the TUI interface." >&2
+    echo "Please ensure gum is installed in your PATH (e.g. in ~/.local/bin/gum)." >&2
+    exit 1
+  fi
+
+  # Omarchy-style banner
+  echo -e "\n\e[32mLet's create a new web app you can start with the app launcher.\e[0m\n"
+
+  # 1. Prompt for App Name
+  while true; do
+    APP_NAME=$(gum input --prompt "Name> " --placeholder "My favorite web app" --width 50)
+    if validate_plain_name "$APP_NAME"; then
+      break
+    fi
+  done
+
+  # 2. Prompt for App URL
+  while true; do
+    RAW_URL=$(gum input --prompt "URL> " --placeholder "https://example.com" --width 50)
+    APP_URL=$(normalize_webapp_url "$RAW_URL")
+    if validate_webapp_url "$APP_URL"; then
+      break
+    fi
+  done
+
+  # 3. Select Dashboardicons.com Icon
+  APP_SLUG=$(safe_icon_name "$APP_NAME")
+  ensure_icon_catalog || true
+
+  ICON_METHOD=$(gum choose --header "Select icon source:" \
+    "Search Dashboardicons.com catalog (4,500+ icons)" \
+    "Enter Dashboardicons.com URL or graphic link" \
+    "Auto-fetch high-resolution site icon")
+
+  case "$ICON_METHOD" in
+    *"Search Dashboardicons"*)
+      if [[ -s "$ICON_CATALOG" ]]; then
+        SELECTED_ICON=$(gum filter \
+          --header "Select a Dashboardicons.com graphic (type to filter, Enter to choose):" \
+          --placeholder "Search icons (e.g. youtube, plex, mail)..." \
+          --value "$APP_SLUG" < "$ICON_CATALOG")
+        if [[ -z "$SELECTED_ICON" ]]; then
+          echo "No icon selected. Falling back to app name search."
+          SELECTED_ICON="$APP_SLUG"
+        fi
+        GRAPHIC_URL="$DASHBOARD_CDN_BASE/png/${SELECTED_ICON}.png"
+      else
+        GRAPHIC_URL="$DASHBOARD_CDN_BASE/png/${APP_SLUG}.png"
+      fi
+      ;;
+
+    *"Enter Dashboardicons"*)
+      ICON_INPUT=$(gum input \
+        --prompt "Icon URL or name> " \
+        --placeholder "https://dashboardicons.com/icons/... or CDN link" \
+        --width 60)
+      if [[ -z "$ICON_INPUT" ]]; then
+        ICON_INPUT="$APP_SLUG"
+      fi
+      GRAPHIC_URL=$(resolve_dashboard_icon_url "$ICON_INPUT")
+      ;;
+
+    *"Auto-fetch"*)
+      GRAPHIC_URL="auto-fetch"
+      ;;
+  esac
+fi
+
+# Determine Icon Source and Download
+ICON_ID=$(safe_icon_name "$APP_NAME")
+TMP_DOWNLOAD=$(mktemp)
+
+if [[ -z "${GRAPHIC_URL:-}" && -n "${RAW_ICON:-}" ]]; then
+  GRAPHIC_URL=$(resolve_dashboard_icon_url "$RAW_ICON")
+fi
+
+if [[ -z "${GRAPHIC_URL:-}" || "$GRAPHIC_URL" == "auto-fetch" ]]; then
+  if [[ "$INTERACTIVE" == "true" ]]; then
+    gum spin --spinner dot --title "Auto-detecting site icon for $APP_URL..." -- \
+      bash -c "$(declare -f download_image fetch_site_icon); fetch_site_icon '$APP_URL' '$TMP_DOWNLOAD'"
+  else
+    fetch_site_icon "$APP_URL" "$TMP_DOWNLOAD" || true
+  fi
+
+  if [[ ! -s "$TMP_DOWNLOAD" ]]; then
+    # Fallback to dashboard-icons matching the slug
+    GRAPHIC_URL="$DASHBOARD_CDN_BASE/png/${ICON_ID}.png"
+    download_image "$GRAPHIC_URL" "$TMP_DOWNLOAD" || true
+  fi
+elif [[ -f "$GRAPHIC_URL" ]]; then
+  cp "$GRAPHIC_URL" "$TMP_DOWNLOAD"
+else
+  # It's an HTTP/HTTPS URL
+  if [[ "$INTERACTIVE" == "true" ]]; then
+    gum spin --spinner dot --title "Downloading Dashboard Icons graphic ($GRAPHIC_URL)..." -- \
+      bash -c "$(declare -f download_image); download_image '$GRAPHIC_URL' '$TMP_DOWNLOAD'"
+  else
+    download_image "$GRAPHIC_URL" "$TMP_DOWNLOAD" || true
+  fi
+fi
+
+if [[ ! -s "$TMP_DOWNLOAD" ]]; then
+  # Fallback to Google Favicon service if download failed
+  download_image "https://www.google.com/s2/favicons?domain=${APP_URL}&sz=256" "$TMP_DOWNLOAD" || {
+    echo -e "\e[31mError: Could not retrieve icon from $GRAPHIC_URL or site favicon.\e[0m" >&2
+    exit 1
+  }
+fi
+
+# Install icon to hicolor theme
+install_icon "$TMP_DOWNLOAD" "$ICON_ID"
+
+# Determine Exec command
+# Priority: webapp-launch helper if present, else direct chromium/chrome command
+LAUNCHER_BIN="$HOME/.local/bin/webapp-launch"
+if [[ -x "$LAUNCHER_BIN" ]]; then
+  EXEC_CMD="$LAUNCHER_BIN $(desktop_exec_arg "$APP_URL")"
+elif command -v chromium &>/dev/null; then
+  EXEC_CMD="chromium --ozone-platform=wayland --app=$(desktop_exec_arg "$APP_URL")"
+elif command -v google-chrome &>/dev/null; then
+  EXEC_CMD="google-chrome --ozone-platform=wayland --app=$(desktop_exec_arg "$APP_URL")"
+elif command -v brave-browser &>/dev/null; then
+  EXEC_CMD="brave-browser --ozone-platform=wayland --app=$(desktop_exec_arg "$APP_URL")"
+elif command -v firefox &>/dev/null; then
+  EXEC_CMD="firefox --new-window $(desktop_exec_arg "$APP_URL")"
+else
+  EXEC_CMD="chromium --app=$(desktop_exec_arg "$APP_URL")"
+fi
+
+WINDOW_CLASS=$(compute_window_class "$APP_URL")
+
+# Create .desktop file
+DESKTOP_FILE="$DESKTOP_DIR/${APP_NAME}.desktop"
+
+name_escaped=$(desktop_string_escape "$APP_NAME")
+exec_escaped=$(desktop_string_escape "$EXEC_CMD")
+icon_escaped=$(desktop_string_escape "$ICON_ID")
+wmclass_escaped=$(desktop_string_escape "$WINDOW_CLASS")
+url_escaped=$(desktop_string_escape "$APP_URL")
+graphic_url_escaped=$(desktop_string_escape "${GRAPHIC_URL:-}")
+
+cat > "$DESKTOP_FILE" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=$name_escaped
+Comment=$name_escaped Web App
+Exec=$exec_escaped
+Icon=$icon_escaped
+Terminal=false
+StartupNotify=true
+StartupWMClass=$wmclass_escaped
+Categories=Network;WebBrowser;
+X-WebApp-URL=$url_escaped
+X-WebApp-IconURL=$graphic_url_escaped
+EOF
+
+chmod +x "$DESKTOP_FILE"
+update-desktop-database "$DESKTOP_DIR" &>/dev/null || true
+
+# Summary / Success
+if [[ "$INTERACTIVE" == "true" ]]; then
+  gum style \
+    --border rounded \
+    --border-foreground 82 \
+    --padding "1 2" \
+    --margin "1 0" \
+    "$(printf '✓ WebApp successfully created!\n\nName:        %s\nURL:         %s\nIcon:        %s\nGraphic URL: %s\nDesktop:     %s\n\nYou can now launch %s using Fuzzel (Mod+D)!' \
+      "$APP_NAME" "$APP_URL" "$ICON_ID.png" "${GRAPHIC_URL:-auto-detected}" "$DESKTOP_FILE" "$APP_NAME")"
+else
+  echo "✓ WebApp '$APP_NAME' created: $DESKTOP_FILE"
+fi

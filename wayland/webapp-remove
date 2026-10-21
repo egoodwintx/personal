@@ -1,0 +1,77 @@
+#!/bin/bash
+# webapp-remove: Remove a web app desktop launcher and its associated icon
+# Inspired by Omarchy's omarchy-webapp-remove
+
+set -eo pipefail
+
+ICON_DIR="$HOME/.local/share/icons/hicolor/256x256/apps"
+SCALABLE_ICON_DIR="$HOME/.local/share/icons/hicolor/scalable/apps"
+DESKTOP_DIR="$HOME/.local/share/applications"
+
+export PATH="$HOME/.local/bin:$PATH"
+
+# Find existing web app desktop files
+WEB_APPS=()
+WEB_APP_PATHS=()
+
+while IFS= read -r -d '' file; do
+  if grep -q -E '(X-WebApp-URL|webapp-launch|--app=)' "$file" 2>/dev/null; then
+    name=$(basename "${file%.desktop}")
+    WEB_APPS+=("$name")
+    WEB_APP_PATHS+=("$file")
+  fi
+done < <(find "$DESKTOP_DIR" -name '*.desktop' -print0 2>/dev/null)
+
+if (( $# == 0 )); then
+  if ((${#WEB_APPS[@]} == 0)); then
+    echo "No installed web apps found in $DESKTOP_DIR."
+    exit 0
+  fi
+
+  if ! command -v gum &>/dev/null; then
+    echo "Installed web apps:"
+    printf ' - %s\n' "${WEB_APPS[@]}"
+    echo "Run: webapp-remove <app-name>"
+    exit 0
+  fi
+
+  mapfile -t SORTED_APPS < <(printf '%s\n' "${WEB_APPS[@]}" | sort)
+  APP_NAME=$(gum choose --header "Select a WebApp to remove:" "${SORTED_APPS[@]}")
+  if [[ -z "$APP_NAME" ]]; then
+    echo "No web app selected."
+    exit 0
+  fi
+  gum confirm "Are you sure you want to remove '$APP_NAME'?" || exit 0
+else
+  APP_NAME="$*"
+fi
+
+safe_icon_name() {
+  printf '%s\n' "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | sed 's/[^[:alnum:]]\+/-/g; s/^-//; s/-$//'
+}
+
+DESKTOP_FILE="$DESKTOP_DIR/$APP_NAME.desktop"
+ICON_ID=$(safe_icon_name "$APP_NAME")
+
+# Also check if desktop file specifies a custom icon
+if [[ -f "$DESKTOP_FILE" ]]; then
+  SPECIFIED_ICON=$(sed -n 's/^Icon=\(.*\)/\1/p' "$DESKTOP_FILE" | head -1)
+  if [[ -n "$SPECIFIED_ICON" ]]; then
+    ICON_ID="$SPECIFIED_ICON"
+  fi
+fi
+
+rm -f "$DESKTOP_FILE"
+rm -f "$ICON_DIR/${ICON_ID}.png" "$SCALABLE_ICON_DIR/${ICON_ID}.svg"
+rm -f "$ICON_DIR/${APP_NAME}.png"
+
+gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" &>/dev/null || true
+update-desktop-database "$DESKTOP_DIR" &>/dev/null || true
+
+if command -v gum &>/dev/null; then
+  gum style --foreground 214 "✓ Removed WebApp '$APP_NAME' and updated launcher database."
+else
+  echo "✓ Removed WebApp '$APP_NAME' and updated launcher database."
+fi

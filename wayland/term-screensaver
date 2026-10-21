@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+BANNER_TEXT="MAD HATTER LABS"
+
+# 1. Pick a random effect
+EFFECTS=("burn" "beams" "colorshift" "matrix" "fireworks" "rain" "spotlights" "overflow")
+RANDOM_EFFECT=${EFFECTS[$RANDOM % ${#EFFECTS[@]}]}
+
+# 2. Launch Alacritty
+# The banner is generated inside the terminal so figlet wraps at the real width.
+# figlet -c centers each wrapped row; awk strips the shared left margin so the
+# block stays centered relative to itself. tte then centers the block on screen.
+alacritty --class screensaver,screensaver \
+  -o "font.size=18" \
+  -e bash -c '
+    RAW="/tmp/screensaver_raw.txt"
+    figlet -f slant -c -w "$(tput cols)" "$1" \
+      | sed "s/[[:space:]]*\$//" \
+      | awk "{a[NR]=\$0; if (NF) { match(\$0, /^ */); if (m == \"\" || RLENGTH < m) m = RLENGTH } }
+             END { for (i = 1; i <= NR; i++) print substr(a[i], m + 1) }" > "$RAW"
+
+    clear
+    tte --input-file "$RAW" \
+        --canvas-width 0 \
+        --canvas-height 0 \
+        --anchor-canvas c \
+        --anchor-text c \
+        "$2"
+
+    read -n 1
+  ' _ "$BANNER_TEXT" "$RANDOM_EFFECT"

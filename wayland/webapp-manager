@@ -1,0 +1,102 @@
+#!/bin/bash
+# webapp-manager: Manage desktop web applications and Dashboard Icons
+
+set -eo pipefail
+
+export PATH="$HOME/.local/bin:$PATH"
+
+DATA_DIR="$HOME/.local/share/webapp-manager"
+ICON_CATALOG="$DATA_DIR/dashboard-icons.txt"
+DESKTOP_DIR="$HOME/.local/share/applications"
+
+usage() {
+  cat << 'EOF'
+Usage: webapp-manager <command> [arguments]
+
+Commands:
+  install, add     Launch the interactive TUI to create a new WebApp
+                   or: webapp-manager install <name> <url> [icon-ref]
+  remove, rm       Select and remove an existing WebApp
+                   or: webapp-manager remove <name>
+  list, ls         List all installed WebApps with URLs and icons
+  search <query>   Search the Dashboard Icons catalog for matching icons
+  update-icons     Update the local Dashboard Icons catalog from GitHub
+
+Examples:
+  webapp-manager install
+  webapp-manager install "YouTube" "https://youtube.com" "youtube"
+  webapp-manager remove
+  webapp-manager search plex
+EOF
+  exit 0
+}
+
+case "${1:-}" in
+  install|add)
+    shift
+    exec webapp-install "$@"
+    ;;
+  remove|rm|delete)
+    shift
+    exec webapp-remove "$@"
+    ;;
+  list|ls)
+    echo -e "\e[1;34mInstalled WebApps:\e[0m"
+    found=0
+    while IFS= read -r -d '' file; do
+      if grep -q -E '(X-WebApp-URL|webapp-launch|--app=)' "$file" 2>/dev/null; then
+        name=$(sed -n 's/^Name=\(.*\)/\1/p' "$file" | head -1)
+        url=$(sed -n 's/^X-WebApp-URL=\(.*\)/\1/p' "$file" | head -1)
+        if [[ -z "$url" ]]; then
+          url=$(sed -n 's/.*--app=["'\'']\?\([^"'\''> ]*\).*/\1/p' "$file" | head -1)
+        fi
+        icon=$(sed -n 's/^Icon=\(.*\)/\1/p' "$file" | head -1)
+        printf ' • \e[1m%-25s\e[0m (Icon: %-20s) -> %s\n' "$name" "$icon" "$url"
+        found=1
+      fi
+    done < <(find "$DESKTOP_DIR" -name '*.desktop' -print0 2>/dev/null)
+    if [[ $found -eq 0 ]]; then
+      echo "  (No web apps installed)"
+    fi
+    ;;
+  search)
+    query="${2:-}"
+    if [[ -z "$query" ]]; then
+      echo "Usage: webapp-manager search <query>"
+      exit 1
+    fi
+    if [[ ! -s "$ICON_CATALOG" ]]; then
+      webapp-install --help &>/dev/null || true
+    fi
+    echo -e "\e[1;34mMatching Dashboard Icons for '$query':\e[0m"
+    grep -i "$query" "$ICON_CATALOG" | while read -r line; do
+      echo " • $line -> https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/$line.png"
+    done
+    ;;
+  update-icons)
+    echo "Updating Dashboard Icons catalog from GitHub..."
+    tmp=$(mktemp)
+    if curl -fsSL "https://api.github.com/repos/homarr-labs/dashboard-icons/git/trees/main?recursive=1" -o "$tmp"; then
+      python3 -c "
+import json
+with open('$tmp') as f:
+    data = json.load(f)
+pngs = sorted([x['path'][4:-4] for x in data.get('tree', []) if x['path'].startswith('png/') and x['path'].endswith('.png')])
+with open('$ICON_CATALOG', 'w') as out:
+    out.write('\n'.join(pngs) + '\n')
+print(f'Successfully updated {len(pngs)} icons.')
+" && rm -f "$tmp"
+    else
+      echo "Failed to fetch from GitHub."
+      rm -f "$tmp"
+      exit 1
+    fi
+    ;;
+  -h|--help|help|"")
+    usage
+    ;;
+  *)
+    echo "Unknown command: $1"
+    usage
+    ;;
+esac

@@ -1,0 +1,23 @@
+#!/bin/bash
+# webapp-launch: Launch a URL as a standalone web app in the best available browser
+set -euo pipefail
+
+URL="${1:-}"
+if [[ -z "$URL" ]]; then
+  echo "Usage: webapp-launch <url>" >&2
+  exit 1
+fi
+
+shift
+
+if command -v chromium &>/dev/null; then
+  exec setsid -f chromium --ozone-platform=wayland --app="$URL" "$@"
+elif command -v google-chrome &>/dev/null; then
+  exec setsid -f google-chrome --ozone-platform=wayland --app="$URL" "$@"
+elif command -v brave-browser &>/dev/null; then
+  exec setsid -f brave-browser --ozone-platform=wayland --app="$URL" "$@"
+elif command -v firefox &>/dev/null; then
+  exec setsid -f firefox --new-window "$URL" "$@"
+else
+  exec setsid -f xdg-open "$URL" "$@"
+fi
