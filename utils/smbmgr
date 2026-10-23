@@ -1,0 +1,789 @@
+#!/usr/bin/env bash
+#
+#  smbmgr — a colorful, gum-powered TUI for mounting SMB/CIFS shares on Linux.
+#
+#  Requires:  bash 4.4+, gum, cifs-utils (mount.cifs), sudo (unless run as root)
+#  Optional:  smbclient     → browse the shares a server offers
+#             avahi-browse  → find servers via mDNS / Bonjour
+#             nmblookup     → find servers via NetBIOS (Windows boxes)
+#
+#  Usage:     smbmgr              launch the TUI
+#             smbmgr <bookmark>   mount a saved bookmark right away
+#             smbmgr --help
+#
+set -uo pipefail
+
+readonly VERSION="1.0.0"
+readonly CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/smbmgr"
+readonly BOOKMARKS="$CONFIG_DIR/bookmarks.tsv"
+readonly CREDS_DIR="$CONFIG_DIR/creds"
+readonly MOUNT_ROOT="${SMBMGR_MOUNT_ROOT:-$HOME/smb}"
+
+# ── palette ────────────────────────────────────────────────────────────────
+readonly PINK=212 PURPLE=141 BLUE=75 CYAN=86 GREEN=120 YELLOW=221 ORANGE=215 RED=203 GREY=244
+readonly GRADIENT=(213 207 177 171 141 135 105 99 69 75 81 87 86 85)
+readonly RAINBOW=(210 216 222 228 192 156 122 123 117 111 147 183 219)
+readonly SPINNERS=(dot minidot jump pulse points globe moon monkey meter)
+
+# ── gum theme ──────────────────────────────────────────────────────────────
+export GUM_CHOOSE_CURSOR="➜ "
+export GUM_CHOOSE_CURSOR_FOREGROUND=$PINK
+export GUM_CHOOSE_HEADER_FOREGROUND=$PURPLE
+export GUM_CHOOSE_SELECTED_FOREGROUND=$CYAN
+export GUM_CHOOSE_SELECTED_PREFIX="💖 "
+export GUM_CHOOSE_UNSELECTED_PREFIX="🤍 "
+export GUM_CHOOSE_CURSOR_PREFIX="🤍 "
+export GUM_CHOOSE_HEIGHT=14
+export GUM_INPUT_PROMPT_FOREGROUND=$PINK
+export GUM_INPUT_CURSOR_FOREGROUND=$CYAN
+export GUM_INPUT_HEADER_FOREGROUND=$PURPLE
+export GUM_INPUT_PLACEHOLDER_FOREGROUND=240
+export GUM_CONFIRM_PROMPT_FOREGROUND=$PURPLE
+export GUM_CONFIRM_SELECTED_BACKGROUND=$PINK
+export GUM_CONFIRM_SELECTED_FOREGROUND=235
+export GUM_CONFIRM_UNSELECTED_BACKGROUND=237
+export GUM_CONFIRM_UNSELECTED_FOREGROUND=252
+
+TAGLINES=(
+  "samba, but make it fabulous 💃"
+  "your files, but over there 🛸"
+  "cifs happens 🌈"
+  "Some Mountin' Bliss ✨"
+  "now with 100% more sparkle 💫"
+  "network drives, zero tears 🧁"
+  "the NAS whisperer 🦄"
+)
+GOODBYES=(
+  "Bye! May your packets never drop 👋"
+  "See ya, file wrangler 🤠"
+  "Stay mounted, friend 🏔"
+  "Off you go — shares will miss you 💌"
+)
+
+SUDO=()
+((EUID == 0)) || SUDO=(sudo -n)
+
+TMP=$(mktemp -d "${XDG_RUNTIME_DIR:-/tmp}/smbmgr.XXXXXX") || exit 1
+trap 'rm -rf "$TMP"' EXIT
+trap 'echo; goodbye; exit 130' INT
+
+# ── little helpers ─────────────────────────────────────────────────────────
+pick_random() { local a=("$@"); printf '%s' "${a[RANDOM % ${#a[@]}]}"; }
+
+rainbow() {
+  local s=$1 out="" i n=${#RAINBOW[@]} off=$((RANDOM % ${#RAINBOW[@]}))
+  for ((i = 0; i < ${#s}; i++)); do
+    out+=$'\e[38;5;'"${RAINBOW[(i + off) % n]}m${s:i:1}"
+  done
+  printf '%s\e[0m' "$out"
+}
+
+paint() { local c=$1; shift; gum style --foreground "$c" "$@"; }
+note()  { gum style --foreground "$GREY" --italic "  $*"; }
+ok()    { gum style --foreground "$GREEN" --bold "  ✔ $*"; }
+warn()  { gum style --foreground "$YELLOW" "  ⚠ $*"; }
+fail()  { gum style --foreground "$RED" --bold "  ✘ $*"; }
+pill()  { gum style --background "$1" --foreground 235 --bold --padding "0 1" "$2"; }
+
+card() {
+  local color=$1; shift
+  gum style --border rounded --border-foreground "$color" --padding "1 3" --margin "0 2" "$@"
+}
+
+pause() {
+  echo
+  gum style --faint "  press any key to continue…"
+  read -rsn1
+}
+
+goodbye() { printf '\n  %s\n\n' "$(rainbow "$(pick_random "${GOODBYES[@]}")")"; }
+
+# spin TITLE OUTFILE CMD... — run CMD behind a spinner, capture its output, keep its exit status
+spin() {
+  local title=$1 out=$2; shift 2
+  gum spin --spinner "$(pick_random "${SPINNERS[@]}")" --title " $title" \
+    --spinner.foreground "$PINK" --title.foreground "$CYAN" -- \
+    bash -c 'out=$1; shift; "$@" >"$out" 2>&1' _ "$out" "$@"
+}
+
+# choose_index HEADER ITEM... — print the 0-based index of the chosen item
+choose_index() {
+  local header=$1; shift
+  local items=("$@") pick i
+  pick=$(gum choose --header "$header" "${items[@]}") || return 1
+  for i in "${!items[@]}"; do
+    [[ ${items[i]} == "$pick" ]] && { echo "$i"; return 0; }
+  done
+  return 1
+}
+
+have() { command -v "$1" >/dev/null 2>&1; }
+
+have_mount_cifs() {
+  have mount.cifs || [[ -x /sbin/mount.cifs || -x /usr/sbin/mount.cifs ]]
+}
+
+install_hint() {
+  local pkg=$1
+  if have apt; then echo "sudo apt install $pkg"
+  elif have dnf; then echo "sudo dnf install $pkg"
+  elif have pacman; then echo "sudo pacman -S $pkg"
+  elif have zypper; then echo "sudo zypper install $pkg"
+  else echo "install the '$pkg' package"
+  fi
+}
+
+# ── banner ─────────────────────────────────────────────────────────────────
+banner() {
+  clear
+  local S=("███████╗" "██╔════╝" "███████╗" "╚════██║" "███████║" "╚══════╝")
+  local M=("███╗   ███╗" "████╗ ████║" "██╔████╔██║" "██║╚██╔╝██║" "██║ ╚═╝ ██║" "╚═╝     ╚═╝")
+  local B=("██████╗ " "██╔══██╗" "██████╔╝" "██╔══██╗" "██████╔╝" "╚═════╝ ")
+  local G=(" ██████╗ " "██╔════╝ " "██║  ███╗" "██║   ██║" "╚██████╔╝" " ╚═════╝ ")
+  local R=("██████╗ " "██╔══██╗" "██████╔╝" "██╔══██╗" "██║  ██║" "╚═╝  ╚═╝")
+  local row col line out k n=${#GRADIENT[@]}
+
+  echo
+  if (($(tput cols 2>/dev/null || echo 80) >= 66)); then
+    # diagonal gradient: hue shifts along each row and down the rows
+    for row in 0 1 2 3 4 5; do
+      line="${S[row]} ${M[row]} ${B[row]}   ${M[row]} ${G[row]} ${R[row]}"
+      out="  "
+      for ((col = 0; col < ${#line}; col++)); do
+        # ping-pong through the gradient so it never jumps from end back to start
+        k=$(((col / 5 + row) % (2 * n - 2)))
+        ((k >= n)) && k=$((2 * n - 2 - k))
+        out+=$'\e[38;5;'"${GRADIENT[k]}m${line:col:1}"
+      done
+      printf '%s\e[0m\n' "$out"
+    done
+  else
+    gum style --bold --foreground "$PINK" --border double --border-foreground "$PURPLE" \
+      --padding "0 4" --margin "0 2" "✦ s m b m g r ✦"
+  fi
+  printf '  %s\n\n' "$(rainbow "$(pick_random "${TAGLINES[@]}")")"
+
+  local mounted bm
+  mounted=$(cifs_mounts | grep -c .)
+  bm=$(bm_names | grep -c .)
+  gum join --horizontal "  " \
+    "$(pill "$CYAN" "📂 $mounted mounted")" " " \
+    "$(pill "$PINK" "⭐ $bm bookmarks")" " " \
+    "$(pill "$YELLOW" "v$VERSION")"
+  echo
+}
+
+# ── mounts on this machine ─────────────────────────────────────────────────
+# prints SOURCE<TAB>TARGET<TAB>OPTIONS for every CIFS mount
+cifs_mounts() {
+  local src tgt opts
+  findmnt -rn -t cifs,smb3 -o SOURCE,TARGET,OPTIONS 2>/dev/null |
+    while read -r src tgt opts; do
+      printf '%b\t%b\t%s\n' "$src" "$tgt" "$opts"
+    done
+}
+
+is_mounted() { findmnt -rn --mountpoint "$1" >/dev/null 2>&1; }
+
+usage_bar() { # PERCENT → colored bar
+  local pct=$1 width=24 filled color bar=""
+  filled=$((pct * width / 100))
+  if ((pct < 70)); then color=$GREEN; elif ((pct < 90)); then color=$YELLOW; else color=$RED; fi
+  printf -v bar '%*s' "$filled" ''
+  bar=${bar// /█}
+  local empty
+  printf -v empty '%*s' "$((width - filled))" ''
+  empty=${empty// /░}
+  printf '\e[38;5;%sm%s\e[38;5;238m%s\e[0m' "$color" "$bar" "$empty"
+}
+
+# ── sudo ───────────────────────────────────────────────────────────────────
+prime_sudo() {
+  ((EUID == 0)) && return 0
+  sudo -n true 2>/dev/null && return 0
+  local pw
+  pw=$(gum input --password --prompt "🛡  " --placeholder "sudo password" \
+    --header "Mounting needs root powers — your sudo password, please") || return 1
+  if printf '%s\n' "$pw" | sudo -S -v -p '' 2>/dev/null; then
+    return 0
+  fi
+  fail "sudo said no 🙅"
+  return 1
+}
+
+as_root() {
+  if ((EUID == 0)); then "$@"; else sudo "$@"; fi
+}
+
+# ── network discovery ──────────────────────────────────────────────────────
+# prints NAME|ADDRESS|VIA, one line per server found
+discover_hosts() {
+  {
+    if command -v avahi-browse >/dev/null 2>&1; then
+      timeout 5 avahi-browse -rpt _smb._tcp 2>/dev/null |
+        awk -F';' '$1 == "=" && $3 == "IPv4" { print $4 "|" $8 "|mdns" }'
+    fi
+    if command -v nmblookup >/dev/null 2>&1; then
+      local ip
+      for ip in $(timeout 4 nmblookup '*' 2>/dev/null | awk '/<00>/ { print $1 }' | sort -u); do
+        (
+          name=$(timeout 3 nmblookup -A "$ip" 2>/dev/null | awk '/<00>/ && !/<GROUP>/ { print $1; exit }')
+          echo "${name:-$ip}|$ip|netbios"
+        ) &
+      done
+      wait
+    fi
+  } | sed 's/\\032/ /g' | sort -t'|' -u -k2,2
+}
+
+scan_network() { # sets HOST on success
+  if ! have avahi-browse && ! have nmblookup; then
+    warn "No scanner available — install avahi-utils or samba-common-bin."
+    return 1
+  fi
+  spin "Sniffing the network for SMB servers…" "$TMP/hosts" \
+    bash -c "$(declare -f discover_hosts); discover_hosts"
+
+  local names=() addrs=() items=() name addr via idx
+  while IFS='|' read -r name addr via; do
+    [[ -n $addr ]] || continue
+    names+=("$name") addrs+=("$addr")
+    items+=("💻  $name  ($addr) · $via")
+  done <"$TMP/hosts"
+
+  if ((${#items[@]} == 0)); then
+    warn "Nobody answered 🦗  (some servers stay quiet — try typing the address)"
+    return 1
+  fi
+  ok "Found ${#items[@]} server(s)!"
+  idx=$(choose_index "🔭 Pick a server" "${items[@]}") || return 1
+
+  # prefer a resolvable name, fall back to the IP
+  if getent hosts "${names[idx]}" >/dev/null 2>&1; then
+    HOST=${names[idx]}
+  elif getent hosts "${names[idx]}.local" >/dev/null 2>&1; then
+    HOST=${names[idx]}.local
+  else
+    HOST=${addrs[idx]}
+  fi
+}
+
+# ── wizard steps ───────────────────────────────────────────────────────────
+pick_host() { # sets HOST (and PRESET_SHARE if a full path was pasted)
+  HOST="" PRESET_SHARE=""
+  local choice raw
+  choice=$(gum choose --header "🌐 Which server are we visiting?" \
+    "📝  Type a hostname, IP or //server/share" \
+    "🔭  Scan the network") || return 1
+
+  if [[ $choice == 🔭* ]]; then
+    scan_network || {
+      gum confirm "Type an address instead?" || return 1
+      choice="📝"
+    }
+  fi
+  if [[ $choice == 📝* ]]; then
+    raw=$(gum input --prompt "🌐 " --placeholder "nas.local · 192.168.1.10 · //nas/media" \
+      --header "Server address") || return 1
+    raw=${raw//\\//}
+    raw=${raw#smb://}
+    raw=${raw#//}
+    HOST=${raw%%/*}
+    [[ $raw == */* ]] && PRESET_SHARE=${raw#*/}
+  fi
+  [[ -n $HOST ]] || { warn "No server, no party 🎈"; return 1; }
+}
+
+ask_creds() { # sets AUTH_USER AUTH_PASS AUTH_DOMAIN AUTH_GUEST
+  AUTH_USER="" AUTH_PASS="" AUTH_DOMAIN="" AUTH_GUEST=0
+  local how
+  how=$(gum choose --header "🔐 How do we sign in to $HOST?" \
+    "🔑  Username & password" \
+    "👻  Guest / anonymous") || return 1
+  if [[ $how == 👻* ]]; then
+    AUTH_GUEST=1
+    return 0
+  fi
+  AUTH_USER=$(gum input --prompt "👤 " --value "$USER" --header "Username (DOMAIN\\user works too)") || return 1
+  if [[ $AUTH_USER == *\\* ]]; then
+    AUTH_DOMAIN=${AUTH_USER%%\\*}
+    AUTH_USER=${AUTH_USER#*\\}
+  fi
+  AUTH_PASS=$(gum input --password --prompt "🔑 " --header "Password for $AUTH_USER") || return 1
+  AUTH_DOMAIN=$(gum input --prompt "🏢 " --placeholder "WORKGROUP (optional — just hit enter)" \
+    --value "$AUTH_DOMAIN" --header "Domain / workgroup") || return 1
+}
+
+write_authfile() { # PATH — credentials file readable by both smbclient and mount.cifs
+  (
+    umask 077
+    {
+      printf 'username=%s\npassword=%s\n' "$AUTH_USER" "$AUTH_PASS"
+      if [[ -n $AUTH_DOMAIN ]]; then printf 'domain=%s\n' "$AUTH_DOMAIN"; fi
+    } >"$1"
+  )
+}
+
+pick_share() { # sets SHARE
+  SHARE=$PRESET_SHARE
+  [[ -n $SHARE ]] && return 0
+
+  if have smbclient; then
+    local args=(-g -L "//$HOST")
+    if ((AUTH_GUEST)); then args+=(-N); else args+=(-A "$TMP/auth"); fi
+    if spin "Peeking at the shares on $HOST…" "$TMP/shares" smbclient "${args[@]}"; then
+      local names=() items=() name comment idx
+      while IFS='|' read -r _ name comment; do
+        names+=("$name")
+        items+=("📁  $name${comment:+  · $comment}")
+      done < <(awk -F'|' '$1 == "Disk" && $2 !~ /\$$/' "$TMP/shares")
+      items+=("📝  Type a share name")
+
+      idx=$(choose_index "📦 $HOST is sharing ${#names[@]} thing(s) — pick one" "${items[@]}") || return 1
+      if ((idx < ${#names[@]})); then
+        SHARE=${names[idx]}
+        return 0
+      fi
+    else
+      card "$RED" "$(paint "$RED" --bold "😿 Couldn't list shares on $HOST")" "" \
+        "$(grep -v '^\s*$' "$TMP/shares" | tail -n 4)"
+      echo
+    fi
+  fi
+
+  SHARE=$(gum input --prompt "📁 " --placeholder "media, backups, homes…" --header "Share name") || return 1
+  SHARE=${SHARE#/}
+  [[ -n $SHARE ]] || { warn "A share needs a name 🥺"; return 1; }
+}
+
+pick_mountpoint() { # sets MP
+  local def="$MOUNT_ROOT/${HOST%%.*}/${SHARE//[\/ ]/_}"
+  MP=$(gum input --prompt "📍 " --value "$def" --header "Where should it live?") || return 1
+  MP=${MP/#\~/$HOME}
+  MP=${MP%/}
+  [[ -n $MP ]] || return 1
+
+  if is_mounted "$MP"; then
+    fail "Something is already mounted at $MP"
+    return 1
+  fi
+  if [[ ! -d $MP ]]; then
+    mkdir -p "$MP" 2>/dev/null || { prime_sudo && as_root mkdir -p "$MP"; } || {
+      fail "Couldn't create $MP"
+      return 1
+    }
+    note "created $MP 🪄"
+  fi
+}
+
+pick_options() { # sets VERS RO EXTRA
+  VERS=auto RO=0 EXTRA=""
+  gum confirm --default=false --affirmative "Tweak" --negative "Defaults are fine" \
+    "🔧 Fiddle with advanced options?" || return 0
+
+  local v
+  v=$(gum choose --header "🧬 SMB protocol version" \
+    "✨  auto (let the server decide)" "3.1.1" "3.0" "2.1" "2.0" "1.0  🦖 ancient & insecure") || return 0
+  case $v in
+    ✨*) VERS=auto ;;
+    1.0*) VERS=1.0 ;;
+    *) VERS=$v ;;
+  esac
+
+  v=$(gum choose --header "✍  Access mode" "📝  read-write" "👀  read-only") || return 0
+  [[ $v == 👀* ]] && RO=1
+
+  EXTRA=$(gum input --prompt "🔧 " --placeholder "e.g. noserverino,cache=none" \
+    --header "Extra mount options (optional)") || EXTRA=""
+}
+
+build_opts() { # CREDFILE → prints the -o string
+  local o="uid=$(id -u),gid=$(id -g),iocharset=utf8,file_mode=0644,dir_mode=0755"
+  if ((AUTH_GUEST)); then o+=",guest"; else o+=",credentials=$1"; fi
+  [[ $VERS != auto ]] && o+=",vers=$VERS"
+  if ((RO)); then o+=",ro"; else o+=",rw"; fi
+  [[ -n $EXTRA ]] && o+=",$EXTRA"
+  printf '%s' "$o"
+}
+
+mount_hint() {
+  case $1 in
+    *"error(13)"*) echo "🔑 Permission denied — check the username, password or domain." ;;
+    *"error(2)"*) echo "🔍 No such share — double-check the share name." ;;
+    *"error(95)"* | *"error(22)"*) echo "🧬 The server didn't like that — try a different SMB version in advanced options." ;;
+    *"error(112)"* | *"error(113)"* | *"error(115)"* | *"error(110)"*) echo "📡 Server unreachable — is it on, and is port 445 open?" ;;
+    *"error(16)"*) echo "🚧 Busy — something is already mounted there." ;;
+    *"wrong fs type"* | *"helper program"*) echo "🧰 mount.cifs is missing — $(install_hint cifs-utils)" ;;
+    *"a password is required"* | *"sudo"*) echo "🛡  sudo needs a password — try again." ;;
+    *) echo "🤔 Check the details above; 'sudo dmesg | tail' often has more clues." ;;
+  esac
+}
+
+do_mount() { # SOURCE MOUNTPOINT OPTIONS
+  local src=$1 mp=$2 opts=$3 out=$TMP/mount.out
+  have_mount_cifs || {
+    fail "mount.cifs isn't installed — $(install_hint cifs-utils)"
+    return 1
+  }
+  prime_sudo || return 1
+  if spin "Mounting $src → $mp" "$out" "${SUDO[@]}" mount -t cifs "$src" "$mp" -o "$opts"; then
+    return 0
+  fi
+  local msg
+  msg=$(grep -v '^\s*$' "$out" | tail -n 4)
+  echo
+  card "$RED" "$(paint "$RED" --bold "💥 Mount failed")" "" "$msg" "" "$(paint "$YELLOW" "$(mount_hint "$msg")")"
+  return 1
+}
+
+celebrate() { # SOURCE MOUNTPOINT
+  local confetti
+  confetti=$(pick_random "🎉🎊✨" "🥳🎈🎉" "🌈🦄✨" "🚀🌟💫" "🍾🎊🥂")
+  local size=""
+  read -r _ s u _ p _ < <(timeout 3 df -h --output=source,size,used,avail,pcent,target "$2" 2>/dev/null | tail -n 1) &&
+    size="💾 $u of $s used ($p)"
+  echo
+  card "$GREEN" \
+    "$(paint "$GREEN" --bold "$confetti  Mounted!  $confetti")" "" \
+    "$(paint "$CYAN" "🌐 $1")" \
+    "$(paint "$PINK" "📍 $2")" \
+    ${size:+"$(paint "$YELLOW" "$size")"}
+  echo
+}
+
+after_mount_menu() { # MOUNTPOINT
+  local items=("🏠  Back to the menu" "🐚  Open a shell there")
+  if have xdg-open && [[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]]; then
+    items+=("🧭  Open in file manager")
+  fi
+  local c
+  c=$(gum choose --header "What now?" "${items[@]}") || return 0
+  case $c in
+    🐚*)
+      note "type 'exit' to come back to smbmgr 🐚"
+      (cd "$1" && "${SHELL:-bash}")
+      ;;
+    🧭*) xdg-open "$1" >/dev/null 2>&1 & ;;
+  esac
+}
+
+# ── bookmarks ──────────────────────────────────────────────────────────────
+# bookmarks.tsv columns: name host share mountpoint user domain vers ro extra guest
+bm_names() { [[ -f $BOOKMARKS ]] && cut -f1 "$BOOKMARKS"; }
+
+bm_get() { # NAME → sets BM_* vars
+  local line
+  line=$(awk -F'\t' -v n="$1" '$1 == n' "$BOOKMARKS" 2>/dev/null | head -n 1)
+  [[ -n $line ]] || return 1
+  # tabs are IFS-whitespace (runs collapse, eating empty fields), so split on \x1f instead
+  IFS=$'\x1f' read -r BM_NAME BM_HOST BM_SHARE BM_MP BM_USER BM_DOMAIN BM_VERS BM_RO BM_EXTRA BM_GUEST \
+    <<<"${line//$'\t'/$'\x1f'}"
+}
+
+bm_put() { # NAME HOST SHARE MP USER DOMAIN VERS RO EXTRA GUEST
+  mkdir -p "$CONFIG_DIR"
+  bm_delete "$1"
+  local IFS=$'\t'
+  printf '%s\n' "$*" >>"$BOOKMARKS"
+}
+
+bm_delete() {
+  [[ -f $BOOKMARKS ]] || return 0
+  awk -F'\t' -v n="$1" '$1 != n' "$BOOKMARKS" >"$TMP/bm" && cat "$TMP/bm" >"$BOOKMARKS"
+  rm -f "$CREDS_DIR/$1"
+}
+
+save_bookmark_prompt() {
+  gum confirm --affirmative "Save it ⭐" --negative "Nah" "⭐ Bookmark this share for next time?" || return 0
+  local def name
+  def="${HOST%%.*}-${SHARE}"
+  def=${def//[^A-Za-z0-9._-]/_}
+  name=$(gum input --prompt "⭐ " --value "$def" --header "Bookmark name") || return 0
+  name=${name//[^A-Za-z0-9._-]/_}
+  [[ -n $name ]] || return 0
+
+  bm_put "$name" "$HOST" "$SHARE" "$MP" "$AUTH_USER" "$AUTH_DOMAIN" "$VERS" "$RO" "$EXTRA" "$AUTH_GUEST"
+  if ((!AUTH_GUEST)) && gum confirm --default=false \
+    "🔐 Remember the password too? (stored chmod 600 in $CREDS_DIR)"; then
+    mkdir -p "$CREDS_DIR" && chmod 700 "$CREDS_DIR"
+    write_authfile "$CREDS_DIR/$name"
+  fi
+  ok "Saved as ⭐ $name — next time just run: smbmgr $name"
+}
+
+bm_mount() { # NAME
+  bm_get "$1" || { fail "No bookmark called '$1' 🤷"; return 1; }
+  HOST=$BM_HOST SHARE=$BM_SHARE MP=$BM_MP VERS=$BM_VERS RO=$BM_RO EXTRA=$BM_EXTRA
+  AUTH_USER=$BM_USER AUTH_DOMAIN=$BM_DOMAIN AUTH_GUEST=$BM_GUEST AUTH_PASS=""
+
+  if is_mounted "$MP"; then
+    ok "⭐ $BM_NAME is already mounted at $MP 😎"
+    return 0
+  fi
+  mkdir -p "$MP" 2>/dev/null || { prime_sudo && as_root mkdir -p "$MP"; } || return 1
+
+  local cred=""
+  if ((!AUTH_GUEST)); then
+    if [[ -f $CREDS_DIR/$BM_NAME ]]; then
+      cred=$CREDS_DIR/$BM_NAME
+    else
+      AUTH_PASS=$(gum input --password --prompt "🔑 " \
+        --header "Password for ${AUTH_DOMAIN:+$AUTH_DOMAIN\\}$AUTH_USER@$HOST") || return 1
+      cred=$TMP/auth
+      write_authfile "$cred"
+    fi
+  fi
+
+  local rc=0
+  do_mount "//$HOST/$SHARE" "$MP" "$(build_opts "$cred")" || rc=$?
+  rm -f "$TMP/auth"
+  ((rc == 0)) && celebrate "//$HOST/$SHARE" "$MP"
+  return $rc
+}
+
+fstab_line() { # uses BM_* vars
+  local opts="uid=$(id -u),gid=$(id -g),iocharset=utf8,_netdev,nofail,x-systemd.automount"
+  if ((BM_GUEST)); then opts+=",guest"
+  else opts+=",credentials=$CREDS_DIR/$BM_NAME"
+  fi
+  [[ $BM_VERS != auto ]] && opts+=",vers=$BM_VERS"
+  ((BM_RO)) && opts+=",ro"
+  [[ -n $BM_EXTRA ]] && opts+=",$BM_EXTRA"
+  local src="//$BM_HOST/$BM_SHARE" mp=$BM_MP
+  printf '%s  %s  cifs  %s  0  0' "${src// /\\040}" "${mp// /\\040}" "$opts"
+}
+
+bookmarks_menu() {
+  while true; do
+    banner
+    local names=() items=() n mark idx
+    while IFS= read -r n; do
+      [[ -n $n ]] || continue
+      bm_get "$n" || continue
+      names+=("$n")
+      if is_mounted "$BM_MP"; then mark="🟢"; else mark="⚪"; fi
+      items+=("$mark ⭐ $n  · //$BM_HOST/$BM_SHARE")
+    done < <(bm_names)
+
+    if ((${#names[@]} == 0)); then
+      card "$PURPLE" "$(paint "$PINK" --bold "No bookmarks yet 🌱")" "" \
+        "Mount something with 🚀 and say yes when I offer to save it."
+      pause
+      return
+    fi
+    items+=("🏠  Back")
+    idx=$(choose_index "⭐ Your bookmarks  (🟢 = mounted)" "${items[@]}") || return
+    ((idx < ${#names[@]})) || return
+    bookmark_actions "${names[idx]}"
+  done
+}
+
+bookmark_actions() { # NAME
+  bm_get "$1" || return
+  local acts=() a
+  if is_mounted "$BM_MP"; then acts+=("🔌  Unmount"); else acts+=("🚀  Mount"); fi
+  acts+=("🔍  Details" "📜  Show /etc/fstab line" "💣  Delete" "🏠  Back")
+
+  echo
+  a=$(gum choose --header "⭐ $1" "${acts[@]}") || return
+  case $a in
+    🚀*) bm_mount "$1" && after_mount_menu "$MP" || pause ;;
+    🔌*) unmount_one "$BM_MP"; pause ;;
+    🔍*)
+      card "$PINK" \
+        "$(paint "$PINK" --bold "⭐ $BM_NAME")" "" \
+        "🌐 server   $BM_HOST" \
+        "📁 share    $BM_SHARE" \
+        "📍 mount    $BM_MP" \
+        "👤 user     $(if ((BM_GUEST)); then echo "guest 👻"; else echo "${BM_DOMAIN:+$BM_DOMAIN\\}$BM_USER"; fi)" \
+        "🔐 password $(if [[ -f $CREDS_DIR/$BM_NAME ]]; then echo "saved"; else echo "ask every time"; fi)" \
+        "🧬 version  $BM_VERS" \
+        "✍  access   $(if ((BM_RO)); then echo "read-only"; else echo "read-write"; fi)" \
+        ${BM_EXTRA:+"🔧 extra    $BM_EXTRA"}
+      pause
+      ;;
+    📜*)
+      card "$BLUE" "$(paint "$BLUE" --bold "📜 Paste this into /etc/fstab to auto-mount at boot:")" "" "$(fstab_line)"
+      if ((!BM_GUEST)) && [[ ! -f $CREDS_DIR/$BM_NAME ]]; then
+        warn "This bookmark has no saved password — delete & re-save it with one for fstab to work."
+      fi
+      pause
+      ;;
+    💣*)
+      gum confirm --default=false "💣 Really delete ⭐ $1?" && bm_delete "$1" && ok "Poof! 💨"
+      sleep 0.6
+      ;;
+  esac
+}
+
+# ── main flows ─────────────────────────────────────────────────────────────
+mount_wizard() {
+  banner
+  gum style --foreground "$PINK" --bold "  🚀 Let's mount something!"
+  echo
+  pick_host || return
+  ask_creds || return
+  ((AUTH_GUEST)) || write_authfile "$TMP/auth"
+  pick_share || { rm -f "$TMP/auth"; pause; return; }
+  pick_mountpoint || { rm -f "$TMP/auth"; pause; return; }
+  pick_options
+
+  local cred=""
+  ((AUTH_GUEST)) || cred=$TMP/auth
+  if do_mount "//$HOST/$SHARE" "$MP" "$(build_opts "$cred")"; then
+    rm -f "$TMP/auth"
+    celebrate "//$HOST/$SHARE" "$MP"
+    save_bookmark_prompt
+    after_mount_menu "$MP"
+  else
+    rm -f "$TMP/auth"
+    pause
+  fi
+}
+
+unmount_one() { # MOUNTPOINT
+  local mp=$1 out=$TMP/umount.out
+  prime_sudo || return 1
+  if spin "Unmounting $mp…" "$out" "${SUDO[@]}" umount "$mp"; then
+    ok "Unmounted $mp 👋"
+    return 0
+  fi
+  fail "Couldn't unmount $mp: $(tail -n 1 "$out")"
+  if gum confirm --default=false "🪂 Try a lazy unmount? (detaches now, cleans up when it's no longer busy)"; then
+    spin "Lazy-unmounting $mp…" "$out" "${SUDO[@]}" umount -l "$mp" && ok "Detached $mp 🪂" && return 0
+    fail "$(tail -n 1 "$out")"
+  fi
+  return 1
+}
+
+unmount_menu() {
+  banner
+  local targets=() items=() src tgt opts
+  while IFS=$'\t' read -r src tgt opts; do
+    targets+=("$tgt")
+    items+=("🔌  $src → $tgt")
+  done < <(cifs_mounts)
+
+  if ((${#targets[@]} == 0)); then
+    card "$PURPLE" "$(paint "$PINK" --bold "Nothing mounted 🍃")" "" "Nothing to unmount — the coast is clear."
+    pause
+    return
+  fi
+
+  local picks pick i
+  picks=$(gum choose --no-limit --header "🔌 Unmount which? (space to select, enter to go)" "${items[@]}") || return
+  [[ -n $picks ]] || return
+  echo
+  while IFS= read -r pick; do
+    for i in "${!items[@]}"; do
+      [[ ${items[i]} == "$pick" ]] && unmount_one "${targets[i]}"
+    done
+  done <<<"$picks"
+  pause
+}
+
+status_view() {
+  banner
+  local src tgt opts any=0 size used pct vers access
+  while IFS=$'\t' read -r src tgt opts; do
+    any=1
+    vers=$(grep -o 'vers=[^,]*' <<<"$opts")
+    access=${opts%%,*}
+    local lines=("$(paint "$CYAN" --bold "📂 $src")" "$(paint "$PINK" "   ↳ $tgt")")
+    if read -r size used pct < <(timeout 3 df -h --output=size,used,pcent "$tgt" 2>/dev/null | tail -n 1); then
+      lines+=("   $(usage_bar "${pct%\%}") $(paint "$YELLOW" "$pct · $used of $size")")
+    else
+      lines+=("$(paint "$RED" "   🐢 not responding")")
+    fi
+    lines+=("$(paint "$GREY" "   🧬 ${vers:-vers=?} · $access")")
+    gum style --border rounded --border-foreground "${GRADIENT[RANDOM % ${#GRADIENT[@]}]}" \
+      --padding "0 2" --margin "0 2" "${lines[@]}"
+  done < <(cifs_mounts)
+
+  if ((!any)); then
+    card "$PURPLE" "$(paint "$PINK" --bold "Nothing mounted yet 🍃")" "" "Pick 🚀 from the menu to get started."
+  fi
+  pause
+}
+
+health_check() {
+  banner
+  local rows=()
+  check() { # LABEL OK? HINT
+    if eval "$2"; then
+      rows+=("$(paint "$GREEN" "  ✔ $1")")
+    else
+      rows+=("$(paint "$RED" "  ✘ $1")$(paint "$GREY" "  → $3")")
+    fi
+  }
+  check "gum                 (the pretty)" "have gum" "https://github.com/charmbracelet/gum"
+  check "mount.cifs          (the mounting)" "have_mount_cifs" "$(install_hint cifs-utils)"
+  check "smbclient           (share browsing)" "have smbclient" "$(install_hint smbclient)"
+  check "avahi-browse        (mDNS scan)" "have avahi-browse" "$(install_hint avahi-utils)"
+  check "nmblookup           (NetBIOS scan)" "have nmblookup" "$(install_hint samba-common-bin)"
+  check "sudo                (root powers)" "((EUID == 0)) || have sudo" "$(install_hint sudo)"
+
+  card "$CYAN" "$(paint "$CYAN" --bold "🩺 Health check")" "" "${rows[@]}" "" \
+    "$(paint "$GREY" "📍 mount root   $MOUNT_ROOT  (set SMBMGR_MOUNT_ROOT to change)")" \
+    "$(paint "$GREY" "⚙  config       $CONFIG_DIR")"
+  pause
+}
+
+main_menu() {
+  while true; do
+    banner
+    local c
+    c=$(gum choose --header "✨ What'll it be?" \
+      "🚀  Mount a share" \
+      "⭐  Bookmarks" \
+      "📂  What's mounted?" \
+      "🔌  Unmount" \
+      "🔭  Scan the network" \
+      "🩺  Health check" \
+      "👋  Quit") || { goodbye; return; }
+    case $c in
+      🚀*) mount_wizard ;;
+      ⭐*) bookmarks_menu ;;
+      📂*) status_view ;;
+      🔌*) unmount_menu ;;
+      🔭*)
+        banner
+        HOST=""
+        scan_network && card "$GREEN" "$(paint "$GREEN" --bold "🎯 $HOST")" "" \
+          "Pick 🚀 Mount a share and type it in to connect."
+        pause
+        ;;
+      🩺*) health_check ;;
+      👋*) goodbye; return ;;
+    esac
+  done
+}
+
+usage() {
+  cat <<EOF
+smbmgr $VERSION — mount SMB shares with style ✨
+
+  smbmgr              launch the interactive TUI
+  smbmgr <bookmark>   mount a saved bookmark right away
+  smbmgr -h|--help    this help
+  smbmgr -V|--version print the version
+
+Bookmarks live in $BOOKMARKS
+Shares mount under $MOUNT_ROOT by default (override with SMBMGR_MOUNT_ROOT).
+EOF
+}
+
+main() {
+  if ! have gum; then
+    echo "smbmgr needs gum → https://github.com/charmbracelet/gum" >&2
+    exit 1
+  fi
+  case ${1:-} in
+    -h | --help) usage ;;
+    -V | --version) echo "smbmgr $VERSION" ;;
+    "") main_menu ;;
+    *) bm_mount "$1" ;;
+  esac
+}
+
+main "$@"
