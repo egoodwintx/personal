@@ -7,12 +7,13 @@
 ;;---------------------------------------------------
 
 ;; create directory tree for .emacs eval
-(defconst emacsrootdir "~/emacs/site-lisp/" 
+(defconst emacsrootdir "~/.emacs.d/site-lisp/" 
   "root of my site-lisp file")
 
 (add-to-list 'load-path emacsrootdir)
 ;;(add-to-list 'load-path (format "%s/%s" emacsrootdir "powershell"))
 (add-to-list 'custom-theme-load-path (format "%s/%s" emacsrootdir "themes/catppuccin"))
+(setq package-install-upgrade-built-in t)
 
 (require 'package) ;; package manager
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
@@ -22,7 +23,7 @@
 (require 'egoodwin-universal)
 (require 'personal-info)
 
-(package-initialize)
+;; (package-initialize) ;; no longer required
 (setq default-tab-width 2)
 
 ;; Python

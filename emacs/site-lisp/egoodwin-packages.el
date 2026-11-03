@@ -23,6 +23,14 @@
     (package-install package)))
 
 (use-package paredit :ensure t)
+
+(use-package org-roam
+  :ensure t
+  :custom
+  (org-roam-directory (file-truename "~/Documents/org-roam/"))
+  :config
+  (org-roam-db-autosync-mode))
+
 ;;(use-package gptel :ensure t :config (setq gptel-api-key (getenv "OPENAI_API_KEY")))
 
 
