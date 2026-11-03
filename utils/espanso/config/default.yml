@@ -8,3 +8,5 @@ keyboard_layout:
 #  - "../match/personal/correspondence.yml"
 #  - "../match/personal/egoodwin_espanso_root.yml"
 #  - "../match/personal/_python_snippets.yml"
+
+search_shortcut: off
